@@ -69,7 +69,7 @@ bot.once("ready", async () => {
   
   // Load all commands
   commands = require("./commands");
-  commands.initialize(bot, collections);
+  await commands.initialize(bot, collections);
   const folders = ["commands", "events"];
   for (let i = 0; folders.length > i; i++) {
 

@@ -6,8 +6,7 @@ const cooledUsers = {};
 require("dotenv").config();
 const fetch = require("node-fetch");
 
-let collections = {};
-
+let configuredCommands = [];
 class Command {
 
   async execute(args, msg, interaction) {
@@ -66,11 +65,10 @@ class Command {
 
   }
 
-  async verifyInteraction() {
+  async verifyInteraction() { 
 
-    const interactionId = !this.slashOptions && await collections.interactions.findOne({name: this.name}); 
-
-    if (interactionId || this.slashOptions) {
+    const interactionCmdInfo = configuredCommands.find(c => c.name === this.name);
+    if (this.slashOptions && !interactionCmdInfo) {
 
       try {
 
@@ -80,7 +78,7 @@ class Command {
         while (true) {
 
           const res = await fetch("https://discord.com/api/v8/applications/" + process.env.applicationId + "/guilds/497607965080027136/commands" + (this.slashOptions ? "" : "/"), {
-            method: this.slashOptions ? "POST" : "DELETE",
+            method: "POST",
             body: JSON.stringify({
               name: this.name,
               description: this.description,
@@ -111,14 +109,15 @@ class Command {
 
       } catch (err) {
 
-        console.warn();
+        console.log("\x1b[33m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
 
       }
 
-    } else if (!this.slashOptions) {
-
-      console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't find interaction ID for command \"" + this.name + "\" in the database. Waiting for command execution to delete the interaction...");
+    } else if (!this.slashOptions && interactionCmdInfo) {
+      
+      console.log("\x1b[36m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
       this.deleteInteraction = true;
+      console.log("\x1b[32m%s\x1b[0m", "[Commands] Removed interaction for command \"" + this.name + "\"...");
 
     }
 
@@ -195,9 +194,26 @@ function getCommand(commandName) {
 
 }
 
-function initialize(client, cols) {
-  
-  collections = cols;
+async function initialize(client) {
+
+  // Get the already configured commands
+  try {
+    
+    const configuredCommandResponse = await fetch("https://discord.com/api/v8/applications/" + process.env.applicationId + "/guilds/497607965080027136/commands", {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bot " + process.env.token
+      }
+    });
+    configuredCommands = await configuredCommandResponse.json();
+
+  } catch (err) {
+
+    console.log("[Commands] Couldn't get existing slash commands from Discord: " + err);
+
+  }
+
+  // Listen to interactions
   client.on("rawWS", async (packet) => {
 
     try {
