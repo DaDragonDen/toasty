@@ -204,7 +204,10 @@ function initialize(client, cols) {
 
       if (packet.t === "INTERACTION_CREATE") {
 
-        const command = commands[packet.d.data.name];
+        const command = commands[packet.d.data.name] || {
+          name: packet.d.data.name,
+          deleteInteraction: true
+        };
         if (command) {
 
           // Send initial response
