@@ -41,7 +41,7 @@ module.exports = (_, collections) => {
     }
     
     const msgText = s + "\nremoved " + invalids + " invalid votes";
-    return interaction ? msgText : await msg.channel.createMessage(msgText);
+    return interaction ? {content: msgText} : await msg.channel.createMessage(msgText);
     
   }, undefined, {});
 
