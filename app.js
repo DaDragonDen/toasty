@@ -6,9 +6,6 @@ const Eris = require("eris");
 // Get environment variables
 require("dotenv").config();
 
-// Load Discord
-const bot = new Eris(process.env.token, {requestTimeout: 30000});
-
 // Get ready to load the database
 let database, dbClient, db, collections;
 async function loadDB() {
@@ -29,6 +26,8 @@ async function loadDB() {
   
 }
 
+// Load Discord
+const bot = new Eris(process.env.token, {requestTimeout: 30000});
 let commands;
 let bumpTimeout;
 bot.once("ready", async () => {
