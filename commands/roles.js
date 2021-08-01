@@ -125,7 +125,7 @@ module.exports = async (_, collections) => {
           await member.addRole(role.roleId, "Asked for it");
 
           const response = "It's yours, my friend.";
-          return interaction ? response : await msg.channel.createMessage({
+          return interaction ? {content: response} : await msg.channel.createMessage({
             content: response,
             messageReferenceID: msg.id,
             allowedMentions: {
