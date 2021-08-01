@@ -190,25 +190,31 @@ bot.once("ready", async () => {
     const uid = reactor.id;
     if (uid === bot.user.id) return;
     
-    try {
+    msg = await bot.getMessage(msg.channel.id, msg.id);
+    const guild = msg.guildID && msg.channel.guild;
+    const members = guild && guild.members;
+    const userMember = members.find(m => m.id === uid);
+    const botMember = members && members.find(m => m.id === bot.user.id);
+    if (msg.guildID) {
       
-      const {members} = msg.channel.guild;
-      const member = members.find(m => m.id === uid);
-      if (msg.guildID) {
-        
-        await require("./modules/reaction-roles")(collections.reactionRoles, members.find(m => m.id === bot.user.id), member, msg, emoji);
-        
-      } else {
+      await require("./modules/reaction-roles")(collections.autoRoles, botMember, userMember, msg, emoji, true);
       
-        await require("./modules/staff-evaluation")(member, collections.staffFeedback, msg, bot, emoji);
-
-      }
-
-    } catch (err) {
-
-      console.warn("Something bad happened when running the MessageReactionAdd function: " + err);
+    } else {
+    
+      await require("./modules/staff-evaluation")(userMember, collections.staffFeedback, msg, bot, emoji);
 
     }
+
+  });
+
+  bot.on("messageReactionRemove", async (msg, emoji, userId) => {
+
+    msg = await bot.getMessage(msg.channel.id, msg.id);
+    const guild = msg.guildID && msg.channel.guild;
+    const members = guild && guild.members;
+    const userMember = members && members.find(m => m.id === userId);
+    const botMember = members && members.find(m => m.id === bot.user.id);
+    await require("./modules/reaction-roles")(collections.autoRoles, botMember, userMember, msg, emoji, false);
 
   });
 
