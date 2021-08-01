@@ -3,11 +3,6 @@ const path = require("path");
 const fs = require("fs");
 const Eris = require("eris");
 
-const RegularRoleId = "498493188357750814";
-const RegularRequiredMsgAmount = 25;
-const staff = {};
-let database, dbClient, db, collections;
-
 // Get environment variables
 require("dotenv").config();
 
@@ -316,89 +311,54 @@ bot.once("ready", async () => {
 
       }
       
-      // Check if we can promote the member
-      if (!msg.author.bot && msg.channel.type === 0 && msg.channel.guild.id === "497607965080027136" && !cmd && !msg.member.roles.find(role => role === RegularRoleId)) {
-
-        const CurrentDate = new Date();
-        const BeginningDate = new Date(CurrentDate.getFullYear() + "-" + (CurrentDate.getMonth() + 1) + "-01").getTime();
-        
-        let currentAmount = 0;
-        const TextChannels = msg.channel.guild.channels.filter((channel) => channel.type === 0);
-        console.log("[Activity Check]: Checking " + msg.author.username + "#" + msg.author.discriminator + "'s (" + msg.author.id + ") activity..."); 
-        for (let i = 0; TextChannels.length > i; i++) {
-
-          // Make sure it's a text channel
-          const CurrentChannel = TextChannels[i];
-          if (CurrentChannel.type !== 0 || !CurrentChannel.permissionsOf(bot.user.id).has("readMessages") || !CurrentChannel.permissionsOf(bot.user.id).has("readMessageHistory")) continue;
-          
-          // Check their messages
-          console.log("[Activity Check / " + msg.author.id + "]: Checking #" + CurrentChannel.name + "...");
-          try {
-            
-            let currentMessages = await CurrentChannel.getMessages(100);
-            let finishedWithChannel = false;
-            
-            while (!finishedWithChannel) {
-
-              let lastMsgId;
-              for (let x = 0; currentMessages.length > x; x++) {
-
-                if (currentAmount >= RegularRequiredMsgAmount || currentMessages[x].createdAt < BeginningDate) {
-
-                  finishedWithChannel = true;
-                  currentMessages = undefined;
-                  break;
-
-                } else if (currentMessages[x].author.id === msg.author.id) {
-
-                  currentAmount++;
-
-                }
-                lastMsgId = currentMessages[x].id;
-
-              }
-              currentMessages = !finishedWithChannel && await CurrentChannel.getMessages(100, lastMsgId);
-
-            }
-            
-            if (currentAmount >= RegularRequiredMsgAmount) {
-
-              console.log("[Activity Check / " + msg.author.id + "]: Member is active");
-              await msg.member.addRole(RegularRoleId, "Reached " + RegularRequiredMsgAmount + " messages this month");
-              break;
-
-            }
-            
-          } catch (err) {
-
-            console.warn("[Activity Check]: Couldn't continue checking: " + err);
-
-          }
-
-        }
-        
-      }
-    
     } catch (err) {
 
       await msg.channel.createMessage("Sorry, I can't help you right now. If you see Christian, be a pal and show him this: \n```js\n" + err.stack + "\n```");
-
+        
     }
 
   });
-
+          
   bot.on("guildMemberAdd", async (guild, member) => {
-
+            
     // Give the member the default roles
     const defaultRoles = await collections.autoRoles.find({type: 1}).toArray();
     for (let i = 0; defaultRoles.length > i; i++) {
-
+            
       // Check if role exists
       if (guild.roles.find(possibleRole => possibleRole.id === defaultRoles[i].roleId)) {
 
         await member.addRole(defaultRoles[i].roleId, "Giving a default role");
 
+                }
+
+              }
+
+  });
+            
+  bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
+
+    // Prevent us from reacting to ourselves
+    const uid = reactor.id;
+    if (uid === bot.user.id) return;
+
+    try {
+            
+      const {members} = msg.channel.guild;
+      const member = members.find(m => m.id === uid);
+      if (msg.guildID) {
+
+        await require("./modules/reaction-roles")(collections.reactionRoles, members.find(m => m.id === bot.user.id), member, msg, emoji);
+
+      } else {
+
+        await require("./modules/staff-evaluation")(member, collections.staffFeedback, msg, bot, emoji);
+        
       }
+    
+    } catch (err) {
+
+      console.warn("Something bad happened when running the MessageReactionAdd function: " + err);
 
     }
 
