@@ -72,6 +72,7 @@
         "no-multiple-empty-lines": "warn",
         "no-useless-concat": "warn",
         "no-case-declarations": "warn",
-        "function-paren-newline": "off"
+        "function-paren-newline": "off",
+        "prefer-destructuring": "warn"
     }
 }
