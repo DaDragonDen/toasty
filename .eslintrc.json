@@ -74,6 +74,7 @@
         "no-case-declarations": "warn",
         "function-paren-newline": "off",
         "prefer-destructuring": "warn",
-        "no-multi-spaces": "warn"
+        "no-multi-spaces": "warn",
+        "import/order": "warn"
     }
 }
