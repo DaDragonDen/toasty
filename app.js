@@ -9,6 +9,8 @@ require("dotenv").config();
 // Load Discord
 const bot = new Eris(process.env.token, {requestTimeout: 30000});
 
+// Get ready to load the database
+let database, dbClient, db, collections;
 async function loadDB() {
 
   console.log("\x1b[36m%s\x1b[0m", "[Client] Updating database variables...");
@@ -117,16 +119,16 @@ bot.once("ready", async () => {
       // Check if it's a staff evaluation
       const guild = bot.guilds.find(possibleGuild => possibleGuild.id === "497607965080027136");
       const member = guild.members.find(possibleMember => possibleMember.id === msg.author.id);
-
+      
       if (msg.channel.type === 1 && (msg.content.toLowerCase() === "start staff evaluation" || msg.messageReference)) {
 
-          if (!dbClient) {
+        if (!dbClient) {
 
-            console.log("Getting database; it didn't load on ready apparently");
-            await loadDB();
-
-          }
-          
+          console.log("Getting database; it didn't load on ready apparently");
+          await loadDB();
+  
+        }
+        
         await require("./modules/staff-evaluation")(member, dbClient, msg, bot, guild);
         return;
 
@@ -157,52 +159,52 @@ bot.once("ready", async () => {
         }
 
       }
-      
+    
     } catch (err) {
 
       await msg.channel.createMessage("Sorry, I can't help you right now. If you see Christian, be a pal and show him this: \n```js\n" + err.stack + "\n```");
-        
+
     }
 
   });
-          
+
   bot.on("guildMemberAdd", async (guild, member) => {
-            
+
     // Give the member the default roles
     const defaultRoles = await collections.autoRoles.find({type: 1}).toArray();
     for (let i = 0; defaultRoles.length > i; i++) {
-            
+
       // Check if role exists
       if (guild.roles.find(possibleRole => possibleRole.id === defaultRoles[i].roleId)) {
 
         await member.addRole(defaultRoles[i].roleId, "Giving a default role");
 
-                }
+      }
 
-              }
+    }
 
   });
-            
-  bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
 
+  bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
+    
     // Prevent us from reacting to ourselves
     const uid = reactor.id;
     if (uid === bot.user.id) return;
-
+    
     try {
-            
+      
       const {members} = msg.channel.guild;
       const member = members.find(m => m.id === uid);
       if (msg.guildID) {
-
-        await require("./modules/reaction-roles")(collections.reactionRoles, members.find(m => m.id === bot.user.id), member, msg, emoji);
-
-      } else {
-
-        await require("./modules/staff-evaluation")(member, collections.staffFeedback, msg, bot, emoji);
         
+        await require("./modules/reaction-roles")(collections.reactionRoles, members.find(m => m.id === bot.user.id), member, msg, emoji);
+        
+      } else {
+      
+        await require("./modules/staff-evaluation")(member, collections.staffFeedback, msg, bot, emoji);
+
       }
-    
+
     } catch (err) {
 
       console.warn("Something bad happened when running the MessageReactionAdd function: " + err);
