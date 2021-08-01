@@ -6,14 +6,17 @@ module.exports = async (collection, botMember, userMember, msg, emoji, add) => {
     if (userMember.bot) return;
       
     // Check if the message is a role message
-  const roleMessageInfo = await collection.findOne({roleMessageId: msg.id, emoji: emoji.id || emoji.name});
-  if (roleMessageInfo) {
+    const roleMessageInfo = await collection.findOne({
+      messageId: msg.id, emoji: emoji.id || emoji.name,
+      type: 0
+    });
+    if (roleMessageInfo) {
 
-    // Check if we can add roles
-    if (!botMember.permissions.has("manageRoles")) {
+      // Check if we can manage roles
+      if (!botMember.permissions.has("manageRoles")) {
 
-      console.log("\x1b[33m%s\x1b[0m", "[Reaction Roles]: I don't have permission to add roles in Guild " + msg.channel.guild.id);
-      return;
+        console.log("\x1b[33m%s\x1b[0m", "[Reaction Roles]: I don't have permission to add roles in Guild " + msg.channel.guild.id);
+        return;
 
       }
         
