@@ -1,3 +1,4 @@
+const fetch = require("node-fetch");
 const Command = require("../commands");
 
 // eslint-disable-next-line no-unused-vars
@@ -36,19 +37,35 @@ module.exports = (_, collections) => {
       } else {
 
         // Send the question directly to the QOTD channel
-        const day = today.getDate() + 1;
-        const month = today.getMonth() + 1;
-        await bot.createMessage("517078514277679152", {
-          content: "> ❓ **Question of the Day - " + (day.length > 1 ? "" : "0") + day + "." + (month.length > 1 ? "" : "0") + month + "." + today.getFullYear() + " (EST)**\n> \n> **<@&713445214932434944>** " + question,
-          embed: {
-            description: "Asked by <@" + member.id + ">"
+        const discordRes = await fetch("https://discord.com/api/v9/channels/517078514277679152/threads", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bot " + process.env.token
           },
-          allowedMentions: {
-            roles: ["713445214932434944"]
-          }
+          body: JSON.stringify({
+            name: question,
+            auto_archive_duration: 1440,
+            type: 11
+          })
         });
+        const jsonRes = await discordRes.json();
+        if (jsonRes.id) {
 
-        response = "It is done.";
+          await bot.createMessage(jsonRes.id, {
+            content: "<@&713445214932434944> " + question,
+            embed: {
+              description: "Asked by <@" + member.id + ">"
+            }
+          });
+
+          response = "It is done.";
+
+        } else {
+
+          response = "Oh no! Something really bad happened when I tried to do that... Let's try again.";
+
+        }
 
       }
 
