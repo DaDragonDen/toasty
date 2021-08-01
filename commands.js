@@ -247,7 +247,7 @@ async function initialize(client) {
 
             } catch (err) {
 
-              console.warn("[Commands] Couldn't execute slash command \"" + command.name + "\": " + err);
+              console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't execute slash command \"" + command.name + "\": " + err);
 
             }
           
@@ -276,7 +276,7 @@ async function initialize(client) {
 
     } catch (err) {
       
-      console.warn("[Commands] Couldn't handle rawWS: " + err);
+      console.log("\x1b[33m%s\x1b[0m", "[Commands] Couldn't handle rawWS: " + err);
 
     }
 
