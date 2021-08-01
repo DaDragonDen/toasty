@@ -320,7 +320,7 @@ module.exports = async (_, collections) => {
     }
   ]);
 
-  new Commands.new("selfrole", ["dr"], "roles", "Configure obtainable roles", [], async (bot, args, msg, interaction) => await setupRole(bot, args, msg, interaction, 2), undefined, [
+  new Commands.new("selfroles", ["dr"], "roles", "Configure obtainable roles", [], async (bot, args, msg, interaction) => await setupRole(bot, args, msg, interaction, 2), undefined, [
     {
       name: "add",
       description: "Add a role that can be obtained by anyone in the server",
