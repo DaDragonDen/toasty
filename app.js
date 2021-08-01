@@ -115,16 +115,11 @@ bot.once("ready", async () => {
       }
       
       // Check if it's a staff evaluation
-      const reference = msg.messageReference;
       const guild = bot.guilds.find(possibleGuild => possibleGuild.id === "497607965080027136");
       const member = guild.members.find(possibleMember => possibleMember.id === msg.author.id);
-      if (msg.channel.type === 1 && (msg.content.toLowerCase() === "start staff evaluation" || reference)) {
 
-        if (member.roles.find(id => id === "498493188357750814")) {
+      if (msg.channel.type === 1 && (msg.content.toLowerCase() === "start staff evaluation" || msg.messageReference)) {
 
-          await msg.channel.sendTyping();
-          
-          // Get database if we don't have it
           if (!dbClient) {
 
             console.log("Getting database; it didn't load on ready apparently");
@@ -132,155 +127,7 @@ bot.once("ready", async () => {
 
           }
           
-          // Check if it's a response
-          const collection = collections.staffFeedback;
-          const uid = msg.author.id;
-          const progress = await collection.findOne({userId: uid});
-          let decisions = {};
-          if (progress) {
-
-            decisions = progress.decisions ? JSON.parse(progress.decisions) : {};
-            if (reference && progress.lastMessageId === reference.messageID) {
-
-              // Get the message
-              const refMsg = await bot.getMessage(msg.channel.id, reference.messageID);
-              const reactions = refMsg ? await refMsg.getReaction("👎") : undefined;
-              if (reactions && reactions.find(reactor => reactor.id === uid)) {
-
-                // Update their vote
-                const staffId = refMsg.embeds[0].footer.text;
-                const staffMember = guild.members.find(possibleMember => possibleMember.id === staffId);
-
-                decisions[staffId] = [-1, refMsg.id, msg.content];
-                await collection.updateOne(
-                  {userId: uid}, 
-                  {$set: {decisions: JSON.stringify(decisions)}},
-                  {upsert: true}
-                );
-
-                // Update the message
-                await refMsg.edit({
-                  content: "You said that **" + staffMember.username + "** __is not__ a good fit for Da Dragon Den. Thank you for explaining!",
-                  embed: {
-                    color: 15551811,
-                    author: {
-                      name: (staffMember.roles.includes("862071715441803285") ? "President " : (
-                        staffMember.roles.includes("862071540521369661") ? "Vice President " : (
-                          staffMember.roles.includes("549312685255294976") ? "Governor " : "Draconic Guard "
-                        )
-                      )) + staffMember.username
-                    },
-                    fields: [{
-                      name: "Your explanation",
-                      value: msg.content
-                    }],
-                    description: "if you change your mind, shoot a msg to christian",
-                    thumbnail: {
-                      url: staffMember.avatarURL
-                    }, 
-                    footer: {
-                      text: staffMember.id
-                    }
-                  }
-                });
-
-              }
-
-            }
-
-          }
-          
-          // Get all of the staff
-          staff[guild.id] = guild.members.filter(possibleStaffMember => 
-            possibleStaffMember.roles.includes("862071715441803285") || 
-            possibleStaffMember.roles.includes("862071540521369661") || 
-            possibleStaffMember.roles.includes("549312685255294976") || 
-            member.roles.includes("753661816999116911"));
-          const crew = staff[guild.id];
-          const roles = ["862071715441803285", "862071540521369661", "549312685255294976"];
-          crew.sort((member1, member2) => {
-
-            let priority = 0;
-            for (let i = 0; roles.length > i; i++) {
-
-              const member1HasRole = member1.roles.includes(roles[i]);
-              const member2HasRole = member2.roles.includes(roles[i]);
-              priority = member1HasRole && !member2HasRole ? -1 : (member2HasRole && !member1HasRole ? 1 : 0);
-              if (priority !== 0) break;
-
-            }
-            return priority;
-
-          });
-          
-          // Check if they already voted
-          let nextUp;
-          if (decisions) {
-
-            for (let i = 0; crew.length > i; i++) {
-
-              if (!decisions[crew[i].id]) {
-
-                nextUp = crew[i];
-                break;
-
-              }
-
-            }
-
-          }
-          
-          if (msg.content.toLowerCase() === "start staff evaluation" && nextUp && progress && progress.lastMessageId) {
-
-            await msg.channel.createMessage(nextUp ? "This is where you left off: https://discord.com/channels/@me/" + msg.channel.id + "/" + progress.lastMessageId : "You already voted. Thank you!");
-            return;
-
-          }
-          
-          // Let's start 
-          const evalMsg = await msg.channel.createMessage(nextUp ? {
-            content: "Do you think **" + nextUp.username + "** is still a good fit for the team?",
-            embed: {
-              author: {
-                name: (nextUp.roles.includes("862071715441803285") ? "President " : (nextUp.roles.includes("862071540521369661") ? "Vice President " : (nextUp.roles.includes("549312685255294976") ? "Governor " : "Draconic Guard "))) + nextUp.username
-              },
-              description: "\n\n> 👍 No problems with them" + 
-                "\n\n> 🤫 I prefer not to say" + 
-                "\n\n> 👎 They're problematic, and I'll tell you why!",
-              thumbnail: {
-                url: nextUp.avatarURL
-              }, 
-              footer: {
-                text: nextUp.id
-              }
-            }
-          } : "And that's everyone! Thanks for your input.");
-          
-          // Remember this message 
-          await collection.updateOne(
-            {userId: uid}, 
-            {$set: progress ? {lastMessageId: evalMsg.id} : {
-              lastMessageId: evalMsg.id, 
-              decisions: "{}"
-            }},
-            {upsert: true}
-          );
-          
-          // Add the reactions
-          if (nextUp) {
-
-            await evalMsg.addReaction("👍");
-            await evalMsg.addReaction("🤫");
-            await evalMsg.addReaction("👎");
-
-          }
-
-        } else {
-
-          await msg.channel.createMessage("You're not an artisan, so you can't vote in this evaluation yet. Sorry about that!");
-
-        }
-        
+        await require("./modules/staff-evaluation")(member, dbClient, msg, bot, guild);
         return;
 
       }
