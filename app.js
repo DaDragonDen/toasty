@@ -66,7 +66,7 @@ bot.once("ready", async () => {
   // Load all commands
   commands = require("./commands");
   await commands.initialize(bot, collections);
-  const folders = ["commands", "events"];
+  const folders = ["commands"];
   for (let i = 0; folders.length > i; i++) {
 
     const files = fs.readdirSync(path.join(__dirname, folders[i]));
@@ -218,6 +218,12 @@ bot.once("ready", async () => {
 
   });
 
+  bot.on("error", (err) => {
+
+    console.log("\x1b[33m%s\x1b[0m", "[Eris]: " + err);
+
+  });
+
   async function getGuildConfig(guildId) {
     
     // Look for data in cache
@@ -245,102 +251,28 @@ bot.once("ready", async () => {
     return guildConfig;
     
   }
+
+  bot.on("messageDelete", async msg => {
+
+    const guildConfig = await getGuildConfig(msg.channel.guild.id);
+    await require("./modules/logs")(bot, msg, guildConfig, true);
+
+  });
   
   bot.on("messageUpdate", async (newMessage, oldMessage) => {
     
     try {
-
-      // Make sure the message is different
-      if (oldMessage && newMessage.content === oldMessage.content) {
-
-        return;
-
-      }
       
-      const GuildConfig = await getGuildConfig(newMessage.channel.guild.id);
-      const LogChannelsString = GuildConfig ? GuildConfig.logChannelIds : undefined;
-      const LogChannels = LogChannelsString ? JSON.parse(LogChannelsString) : [];
-      
-      if (!LogChannels || LogChannels.length === 0) {
-
-        console.log("Guild " + newMessage.channel.guild.id + " doesn't have a log channel.");
-        return;
-
-      }
-
-      for (let i = 0; LogChannels.length > i; i++) {
-        
-        // Check if we have access to the channel
-        const LogChannel = bot.getChannel(LogChannels[i]);
-        if (!LogChannel) {
-
-          continue;
-
-        }
-        
-        // Check if we have the old message
-        if (oldMessage) {
-
-          await LogChannel.createMessage({
-            content: "**" + newMessage.author.username + "** edited their message.",
-            embed: {
-              author: {
-                name: newMessage.author.username + "#" + newMessage.author.discriminator,
-                icon_url: newMessage.author.avatarURL
-              },
-              color: 14994184,
-              fields: [
-                {
-                  name: "Old message",
-                  value: oldMessage.content
-                }, {
-                  name: "New message",
-                  value: newMessage.content
-                }, {
-                  name: "Channel",
-                  value: "<#" + newMessage.channel.id + ">"
-                }
-              ],
-              footer: {
-                text: newMessage.id
-              }
-            }
-          });
-
-        } else {
-
-          await LogChannel.createMessage({
-            content: "**" + newMessage.author.username + "** edited their message, but Discord blocked me from getting the message before its inevitable destruction.",
-            embed: {
-              author: {
-                name: newMessage.author.username + "#" + newMessage.author.discriminator,
-                icon_url: newMessage.author.avatarURL
-              }, 
-              color: 14994184,
-              fields: [
-                {
-                  name: "New message",
-                  value: newMessage.content
-                }, {
-                  name: "Channel",
-                  value: "<#" + newMessage.channel.id + ">"
-                }
-              ], 
-              footer: {
-                text: newMessage.id
-              }
-            }
-          });
-
-        }
-
-      }
+      newMessage = await bot.getMessage(newMessage.channel.id, newMessage.id);
 
     } catch (err) {
 
-      console.warn("Couldn't log edited message: " + err);
+      console.log("\x1b[33m%s\x1b[0m", "[messageUpdate] Couldn't get message: " + err);
 
     }
+
+    const guildConfig = await getGuildConfig(newMessage.channel.guild.id);
+    await require("./modules/logs")(bot, newMessage, guildConfig, false, oldMessage);
 
   });
   
