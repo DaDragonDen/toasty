@@ -264,7 +264,7 @@ bot.once("ready", async () => {
 
   bot.on("messageDelete", async msg => {
 
-    const guildConfig = await getGuildConfig(msg.channel.guild.id);
+    const guildConfig = msg.channel.guild && await getGuildConfig(msg.channel.guild.id);
     await require("./modules/logs")(bot, msg, guildConfig, true);
 
   });
@@ -281,8 +281,8 @@ bot.once("ready", async () => {
 
     }
 
-    const guildConfig = await getGuildConfig(newMessage.channel.guild.id);
-    await require("./modules/logs")(bot, newMessage, guildConfig, false, oldMessage);
+    const guildConfig = newMessage.channel.guild && await getGuildConfig(newMessage.channel.guild.id);
+    if (guildConfig) await require("./modules/logs")(bot, newMessage, guildConfig, false, oldMessage);
 
   });
   
