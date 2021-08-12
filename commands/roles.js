@@ -210,7 +210,7 @@ module.exports = async (_, collections) => {
       
       // Everything is OK!
       const response = "Role added!" + (roleType === 1 ? " Gave the role to " + affectedMembers + " existing members too." : "");
-      return interaction ? response : await msg.channel.createMessage({
+      return interaction ? {content: response} : await msg.channel.createMessage({
         content: response,
         messageReferenceID: msg.id,
         allowedMentions: {
