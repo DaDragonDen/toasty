@@ -56,7 +56,7 @@ bot.once("ready", async () => {
 
     // Look for the last bump message
     //const messages = await bot.getMessages("509403818031710208");
-    await resetBumpTimeout();
+    //await resetBumpTimeout();
 
   }
 
@@ -195,7 +195,7 @@ bot.once("ready", async () => {
   });
 
   bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
-    
+
     // Prevent us from reacting to ourselves
     const uid = reactor.id;
     if (uid === bot.user.id) return;
