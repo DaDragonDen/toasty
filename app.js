@@ -182,6 +182,16 @@ bot.once("ready", async () => {
 
     }
 
+    // Tell the admins
+    await bot.createMessage("497607965080027138", "<@" + member.id + "> joined the server!");
+
+  });
+
+  bot.on("guildMemberRemove", async (guild, member) => {
+
+    // Tell the admins
+    await bot.createMessage("497607965080027138", "<@" + member.id + "> left the server.");
+
   });
 
   bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
