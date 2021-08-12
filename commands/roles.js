@@ -69,7 +69,6 @@ module.exports = async (_, collections) => {
         try {
 
           await msg.addReaction(emoji);
-          await msg.removeReaction(emoji);
 
         } catch (err) {
 
