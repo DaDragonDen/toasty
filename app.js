@@ -195,7 +195,7 @@ bot.once("ready", async () => {
   });
 
   bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
-
+    
     // Prevent us from reacting to ourselves
     const uid = reactor.id;
     if (uid === bot.user.id) return;
