@@ -86,7 +86,7 @@ module.exports = async (_, collections) => {
 
         // Check permission in the channel
         const ReactChannel = bot.getChannel(Input.channelId);
-        if (!ReactChannel.permissionsOf(bot.user.id).has("addReactions")) {
+        if (ReactChannel && !ReactChannel.permissionsOf(bot.user.id).has("addReactions")) {
 
           if (interaction) await msg.delete();
           const response = "I don't have permission to react in <#" + Input.channelId + ">...";
