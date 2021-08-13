@@ -104,7 +104,21 @@ module.exports = async (_, collections) => {
       
       // Register this into the database
       const guild = interaction ? bot.guilds.find(possibleGuild => possibleGuild.id === interaction.guild_id) : msg.channel.guild;
+      const member = (interaction ? guild.members.find(possibleMember => possibleMember.id === interaction.member.user.id) : msg.member);
       if (action.name === "add") {
+
+        if (!member.permissions.has("manageRoles")) {
+
+          const response = "Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?";
+          return interaction ? {content: response} : await msg.channel.createMessage({
+            content: response,
+            messageReferenceID: msg.id,
+            allowedMentions: {
+              repliedUser: true
+            }
+          });
+
+        }
 
         await collections.autoRoles.insertOne({
           messageId: Input.messageId,
