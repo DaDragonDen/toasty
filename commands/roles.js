@@ -132,12 +132,12 @@ module.exports = async (_, collections) => {
 
         // Check if role exists
         const role = await collections.autoRoles.findOne({roleId: Input.roleId, type: 2});
+        let response = "That role isn't on the table!";
         if (guild.roles.find(possibleRole => possibleRole.id === Input.roleId) && role) {
 
-          const member = (interaction ? guild.members.find(possibleMember => possibleMember.id === interaction.member.user.id) : msg.member);
           await member.addRole(role.roleId, "Asked for it");
 
-          const response = "It's yours, my friend.";
+          response = "It's yours, my friend.";
           return interaction ? {content: response} : await msg.channel.createMessage({
             content: response,
             messageReferenceID: msg.id,
@@ -148,7 +148,6 @@ module.exports = async (_, collections) => {
 
         }
 
-        const response = "That role isn't on the table!";
         return interaction ? response : await msg.channel.createMessage({
           content: response,
           messageReferenceID: msg.id,
@@ -208,7 +207,7 @@ module.exports = async (_, collections) => {
       } else if (roleType === 1 && !Input.noExisting) {
 
         // Give this role to existing members
-        const guildMembers = guild.members.map(member => member);
+        const guildMembers = guild.members.map(possibleMember => possibleMember);
         for (let i = 0; guildMembers.length > i; i++) {
 
           if (!guildMembers[i].roles.find(roleId => Input.roleId === roleId) && (!guildMembers[i].bot || !Input.noBots)) {
