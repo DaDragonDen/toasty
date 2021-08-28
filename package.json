@@ -3,6 +3,7 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "eris": "^0.15.1",
+    "express": "^4.17.1",
     "mongodb": "^3.6.6",
     "node-cache": "^5.1.2",
     "node-fetch": "^2.6.1"

@@ -286,11 +286,15 @@ bot.once("ready", async () => {
 
   });
   
+  // Load the web server
+  require("./server")();
+
   bot.editStatus("online");
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Ready to roll! It took " + (new Date().getTime() - startTime) / 1000 + " seconds");
 
 });
 
+// Connect to Discord
 console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to Discord...");
 bot.connect();
