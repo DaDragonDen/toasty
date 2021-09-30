@@ -190,7 +190,7 @@ bot.once("ready", async () => {
   bot.on("guildMemberRemove", async (guild, member) => {
 
     // Tell the admins
-    if (guild.id === "497607965080027136") await bot.createMessage("497607965080027138", "<@" + member.id + "> left the server.");
+    if (guild.id === "497607965080027136") await bot.createMessage("497607965080027138", member.username + "#" + member.discriminator + " (<@" + member.id + "> / " + member.id + ") left the server.");
 
   });
 

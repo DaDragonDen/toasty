@@ -7,7 +7,7 @@ module.exports = async (collection, botMember, userMember, msg, emoji, add) => {
       
     // Check if the message is a role message
     const roleMessageInfo = await collection.findOne({
-      messageId: msg.id, emoji: emoji.id || emoji.name,
+      messageId: msg.id, emoji: emoji.id ? ":" + emoji.name + ":" + emoji.id : emoji.name,
       type: 0
     });
     if (roleMessageInfo) {
