@@ -66,6 +66,7 @@
         "no-eval": "off",
         "spaced-comment": "off",
         "no-return-await": "off",
+        "no-useless-return": "warn",
         "no-tabs": "warn",
         "indent": "warn",
         "no-param-reassign": "off",
@@ -75,6 +76,7 @@
         "function-paren-newline": "off",
         "prefer-destructuring": "warn",
         "no-multi-spaces": "warn",
-        "import/order": "warn"
+        "import/order": "warn",
+        "camelcase": "off"
     }
 }

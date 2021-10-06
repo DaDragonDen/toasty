@@ -19,7 +19,8 @@ async function loadDB() {
     autoRoles: db.collection("AutoRoles"),
     staffFeedback: db.collection("StaffFeedback"),
     interactions: db.collection("Interactions"),
-    questions: db.collection("Questions")
+    questions: db.collection("Questions"),
+    twitterAuthInfo: db.collection("TwitterAuthorizationInfo")
   };
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
@@ -92,17 +93,7 @@ bot.once("ready", async () => {
 
     try {
 
-      const ServerPrefix = commands.getPrefix(msg.channel.id);
-      
-      // Check if they just want the bot prefix
-      const AuthorPing = "<@" + msg.author.id + ">";
-      if (msg.content === "<@" + bot.user.id + ">" || msg.content === "<@!" + bot.user.id + ">") {
-
-        msg.channel.createMessage(AuthorPing + " My prefix is **`" + ServerPrefix + "`**!");
-        return;
-
-      }
-      
+      // Check if it's a bot
       if (msg.author.bot) {
 
         // Check if it's the bump bot
@@ -114,11 +105,35 @@ bot.once("ready", async () => {
         return;
 
       }
+
+      // Check if it's a Twitter post
+      const tweets = [...msg.content.matchAll(/twitter\.com\/[^/]+\/[^/]+\/(?<tweetId>\d+)/gm)];
+      if (tweets && msg.channel.id === "550486587562131458") {
+
+        // Iterate through each Tweet
+        for (let x = 0; tweets.length > x; x++) {
+
+          // Retweet the Tweet
+          await require("./modules/twitter-transmitter").retweet(msg, tweets[x].groups.tweetId);
+
+        }
+
+      }
+
+      const ServerPrefix = commands.getPrefix(msg.channel.id);
+      
+      // Check if they just want the bot prefix
+      const AuthorPing = "<@" + msg.author.id + ">";
+      if (msg.content === "<@" + bot.user.id + ">" || msg.content === "<@!" + bot.user.id + ">") {
+
+        msg.channel.createMessage(AuthorPing + " My prefix is **`" + ServerPrefix + "`**!");
+        return;
+
+      }
       
       // Check if it's a staff evaluation
       const guild = bot.guilds.find(possibleGuild => possibleGuild.id === "497607965080027136");
       const member = guild.members.find(possibleMember => possibleMember.id === msg.author.id);
-      
       if (msg.channel.type === 1 && (msg.content.toLowerCase() === "start staff evaluation" || msg.messageReference)) {
 
         if (!dbClient) {
@@ -285,6 +300,10 @@ bot.once("ready", async () => {
     if (guildConfig) await require("./modules/logs")(bot, newMessage, guildConfig, false, oldMessage);
 
   });
+
+  // Load Twitter module
+  await require("./modules/twitter-transmitter").setupAppClient(bot);
+  await require("./modules/twitter-transmitter").setCollections(collections);
   
   // Load the web server
   require("./server")();

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>You may now close the window</title>
+    <script>
+
+      // Save the token info as a cookie
+      const response = <%- JSON.stringify(response) %>;
+      const expiry = new Date(new Date().getTime() * 3600000).toUTCString();
+      document.cookie = `discord_access_token=${response.access_token};expires=${expiry};path=/`;
+      document.cookie = `discord_expires_in=${response.expires_in};expires=${expiry};path=/`;
+      document.cookie = `discord_refresh_token=${response.refresh_token};expires=${expiry};path=/`;
+      document.cookie = `discord_token_type=${response.token_type};expires=${expiry};path=/`;
+
+      // Try to close the window
+      window.close();
+
+    </script>
+  </head>
+  <body>
+    You may now close the window...or tab, I'm not sure lol
+  </body>
+</html>

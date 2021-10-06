@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      const authLink = <%- JSON.stringify(twitterAuthLink) %>;
+      function authorize(service) {
+        const loginWindow = window.open(service == 0 ? "https://discord.com/oauth2/authorize?client_id=452818283863736345&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fauth%2Fdiscord&response_type=code&scope=identify%20guilds" : authLink.url);
+        const timer = setInterval(function() {
+
+          if (loginWindow.closed) {
+
+            // Stop the timer
+            clearInterval(timer);
+            
+            // Check if we're authorized
+            const value = `; ${document.cookie}`;
+            const parts = value.split("; discord_access_token=");
+            if (parts.length === 2 && parts.pop().split(";")[0]) {
+
+              console.log("authorized")
+
+            }
+
+          }
+
+        }, 1000);
+      }
+    </script>
+  </head>
+  <body>
+    <div>
+      First...
+      <button onclick="authorize(0)">Sign in to Discord</button>
+    </div>
+    <div>
+      Now,
+      <button onclick="authorize(1)">Sign in to Twitter</button>
+    </div>
+  </body>
+</html>
