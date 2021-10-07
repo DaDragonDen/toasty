@@ -11,26 +11,40 @@ exports.setCollections = (initCollections) => {
 
 exports.retweet = async (msg, tweetId) => {
 
-  // Check if the collections are ready
-  const collectionCheck = !collections && setInterval(() => collections && clearInterval(collectionCheck), 3000);
+  try {
 
-  // Check if we're authorized
-  const twitterAuth = await collections.twitterAuthInfo.findOne({guildId: msg.channel.guild.id});
-  if (!twitterAuth) {
+    // Check if the collections are ready
+    const collectionCheck = !collections && setInterval(() => collections && clearInterval(collectionCheck), 3000);
 
-    await msg.channel.createMessage("Hey there! I need permission from the server staff to retweet this. Social media admins - use this link: https://toasty.makuwro.com/login?reason=twitter");
-    return;
+    // Check if we're authorized
+    const twitterAuth = await collections.twitterAuthInfo.findOne({guildId: msg.channel.guild.id});
+    if (!twitterAuth || !twitterAuth.access_token || !twitterAuth.access_secret) {
+
+      await msg.channel.createMessage("Hey there! I need permission from the server staff to retweet this. Social media admins - use this link: https://toasty.makuwro.com/login?reason=twitter");
+      return;
+
+    }
+
+    // Create a temporary client
+    const userClient = new TwitterApi({
+      appKey: process.env.twitterAPIKey,
+      appSecret: process.env.twitterAPIKeySecret,
+      accessToken: twitterAuth.access_token,
+      accessSecret: twitterAuth.access_secret
+    });
+
+    // Retweet the Tweet
+    const user = await userClient.currentUser();
+    await userClient.v2.retweet(user.id_str, tweetId);
+
+  } catch (err) {
+
+    console.log(err);
 
   }
 
-  // Retweet the Tweet
-  console.log();
-  //await userClient.v2.retweet(await userClient.currentUser().id, tweetId);
-
 };
 
-exports.setupAppClient = () => {};
-/*
 exports.setupAppClient = async (bot) => {
 
   await appClient.v2.updateStreamRules({
@@ -75,5 +89,4 @@ exports.setupAppClient = async (bot) => {
 
   });
 
-}
-*/
+};

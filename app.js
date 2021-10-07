@@ -108,7 +108,7 @@ bot.once("ready", async () => {
 
       // Check if it's a Twitter post
       const tweets = [...msg.content.matchAll(/twitter\.com\/[^/]+\/[^/]+\/(?<tweetId>\d+)/gm)];
-      if (tweets && msg.channel.id === "550486587562131458") {
+      if (tweets && msg.member.roles.find(roleId => roleId === "895145350397067274") && msg.channel.parentID === "790370734736146452") {
 
         // Iterate through each Tweet
         for (let x = 0; tweets.length > x; x++) {
@@ -306,7 +306,7 @@ bot.once("ready", async () => {
   await require("./modules/twitter-transmitter").setCollections(collections);
   
   // Load the web server
-  require("./server")();
+  require("./server")(bot, collections);
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Ready to roll! It took " + (new Date().getTime() - startTime) / 1000 + " seconds");
 
