@@ -3,28 +3,24 @@ const Command = require("../commands");
 // eslint-disable-next-line no-unused-vars
 module.exports = (_, collections) => {
   
-  new Command.new("eval", ["evaluate"], "dev", "A command for debugging the bot", undefined, async (bot, args, msg, interaction) => {
+  new Command.new("eval", "A command for debugging the bot", async (bot, interaction) => {
 
     // Make sure they're allowed to eval
-    if (interaction ? interaction.member.id : msg.author.id !== "419881371004174338") {
-
-      return {content: "I don't think I want to do that."};
-
-    }
+    if ((interaction.member || interaction.user).id !== "419881371004174338") return await interaction.createFollowup("I don't think I want to do that.");
     
     // Run the command
     try {
 
-      eval(interaction ? interaction.data.options.find(option => option.name === "code").value : args);
-      return {content: "Done!"};
+      eval(interaction.data.options.find(option => option.name === "code").value );
+      return await interaction.createFollowup("Done!");
 
     } catch (err) {
 
-      return interaction ? {content: err.message} : await msg.channel.createMessage("Something happened!!1 \n```" + err + "\n```");
+      return await interaction.createFollowup(err.message);
 
     }
 
-  }, undefined, [{
+  }, 0, [{
     name: "code",
     description: "The code you want to run",
     type: 3,

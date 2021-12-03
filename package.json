@@ -3,12 +3,10 @@
   "dependencies": {
     "dotenv": "^8.2.0",
     "ejs": "^3.1.6",
-    "eris": "^0.15.1",
+    "eris": "^0.16.1",
     "express": "^4.17.1",
     "mongodb": "^3.6.6",
-    "node-cache": "^5.1.2",
-    "node-fetch": "^2.6.1",
-    "twitter-api-v2": "^1.5.2"
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "eslint": "^7.31.0",

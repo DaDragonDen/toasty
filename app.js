@@ -17,10 +17,8 @@ async function loadDB() {
   db = dbClient.db("guilds");
   collections = {
     autoRoles: db.collection("AutoRoles"),
-    staffFeedback: db.collection("StaffFeedback"),
     interactions: db.collection("Interactions"),
-    questions: db.collection("Questions"),
-    twitterAuthInfo: db.collection("TwitterAuthorizationInfo")
+    questions: db.collection("Questions")
   };
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
@@ -28,9 +26,26 @@ async function loadDB() {
 }
 
 // Load Discord
-const bot = new Eris(process.env.token, {requestTimeout: 30000});
+const bot = new Eris(process.env.token, {
+  intents: ["allNonPrivileged", "guildMessages", "guildMembers"]
+});
 let commands;
 let bumpTimeout;
+async function resetBumpTimeout(remainingTime) {
+
+  bumpTimeout = setTimeout(async () => {
+
+    bumpTimeout = undefined;
+    await bot.createMessage("509403818031710208", {
+      allowedMentions: {
+        roles: true
+      },
+      content: "<@&851865112972886027> bumping's back!"
+    });
+
+  }, remainingTime || 7200000);
+
+}
 bot.once("ready", async () => {
 
   // Time how long it takes for the bot to really start
@@ -38,21 +53,6 @@ bot.once("ready", async () => {
   console.log("\x1b[32m%s\x1b[0m", "[Client] Logged in!");
 
   // Check for the last bump time
-  async function resetBumpTimeout(remainingTime) {
-
-    bumpTimeout = setTimeout(async () => {
-
-      bumpTimeout = undefined;
-      await bot.createMessage("509403818031710208", {
-        allowedMentions: {
-          roles: true
-        },
-        content: "<@&851865112972886027> bumping's back!"
-      });
-
-    }, remainingTime || 7200000);
-
-  }
   if (!bumpTimeout) {
 
     // Look for the last bump message
@@ -82,103 +82,23 @@ bot.once("ready", async () => {
 
   // Upsert/delete slash commands where necessary
   const commandList = Object.keys(commands.list);
-  for (let i = 0; commandList.length > i; i++) {
-
-    await commands.list[commandList[i]].verifyInteraction();
-
-  }
+  for (let i = 0; commandList.length > i; i++) await commands.list[commandList[i]].verifyInteraction();
   
   console.log("\x1b[36m%s\x1b[0m", "[Client] Initializing events...");
   bot.on("messageCreate", async (msg) => {
 
-    try {
+    // Check if it's a bot
+    if (msg.author.bot) {
 
-      // Check if it's a bot
-      if (msg.author.bot) {
+      // Check if it's the bump bot
+      if (msg.author.id === "302050872383242240" && msg.embeds[0].description.includes("Bump done")) {
 
-        // Check if it's the bump bot
-        if (msg.author.id === "302050872383242240" && msg.embeds[0].description.includes("Bump done")) {
-
-          await resetBumpTimeout();
-          
-        }
-        return;
-
-      }
-
-      // Check if it's a Twitter post
-      const tweets = [...msg.content.matchAll(/twitter\.com\/[^/]+\/[^/]+\/(?<tweetId>\d+)/gm)];
-      if (tweets && msg.member.roles.find(roleId => roleId === "895145350397067274") && msg.channel.parentID === "790370734736146452") {
-
-        // Iterate through each Tweet
-        for (let x = 0; tweets.length > x; x++) {
-
-          // Retweet the Tweet
-          await require("./modules/twitter-transmitter").retweet(msg, tweets[x].groups.tweetId);
-
-        }
-
-      }
-
-      const ServerPrefix = commands.getPrefix(msg.channel.id);
-      
-      // Check if they just want the bot prefix
-      const AuthorPing = "<@" + msg.author.id + ">";
-      if (msg.content === "<@" + bot.user.id + ">" || msg.content === "<@!" + bot.user.id + ">") {
-
-        msg.channel.createMessage(AuthorPing + " My prefix is **`" + ServerPrefix + "`**!");
-        return;
-
-      }
-      
-      // Check if it's a staff evaluation
-      const guild = bot.guilds.find(possibleGuild => possibleGuild.id === "497607965080027136");
-      const member = guild.members.find(possibleMember => possibleMember.id === msg.author.id);
-      if (msg.channel.type === 1 && (msg.content.toLowerCase() === "start staff evaluation" || msg.messageReference)) {
-
-        if (!dbClient) {
-
-          console.log("Getting database; it didn't load on ready apparently");
-          await loadDB();
-  
-        }
+        await resetBumpTimeout();
         
-        await require("./modules/staff-evaluation")(member, dbClient, msg, bot, guild);
-        return;
-
       }
-      
-      // Check if it's a command
-      let cmd, commandName, args;
-      if (!msg.author.bot && msg.author.id !== bot.user.id && msg.content.substring(0, ServerPrefix.length) === ServerPrefix) {
+      return;
 
-        commandName = msg.content.indexOf(" ") !== -1 ? msg.content.substring(1, msg.content.indexOf(" ")) : msg.content.substring(1);
-        args = msg.content.indexOf(" ") !== -1 && msg.content.substring(msg.content.indexOf(" ") + 1);
-        
-        if (commandName) {
-
-          try {
-
-            cmd = commands.get(commandName);
-            if (cmd) cmd.execute(args, msg);
-
-          } catch (err) {
-
-            msg.channel.createMessage({
-              content: AuthorPing + " Something bad happened! Please try again."
-            });
-
-          }
-
-        }
-
-      }
-    
-    } catch (err) {
-
-      await msg.channel.createMessage("Sorry, I can't help you right now. If you see Christian, be a pal and show him this: \n```js\n" + err.stack + "\n```");
-
-    }
+    };
 
   });
 
@@ -197,37 +117,27 @@ bot.once("ready", async () => {
 
     }
 
-    // Tell the admins
-    await bot.createMessage("497607965080027138", "<@" + member.id + "> joined the server!");
-
-  });
-
-  bot.on("guildMemberRemove", async (guild, member) => {
-
-    // Tell the admins
-    if (guild.id === "497607965080027136") await bot.createMessage("497607965080027138", member.username + "#" + member.discriminator + " (<@" + member.id + "> / " + member.id + ") left the server.");
-
   });
 
   bot.on("messageReactionAdd", async (msg, emoji, reactor) => {
     
     // Prevent us from reacting to ourselves
-    const uid = reactor.id;
-    if (uid === bot.user.id) return;
+    const userId = reactor.id;
+    const botId = bot.user.id;
+    if (userId === botId) return;
     
     msg = await bot.getMessage(msg.channel.id, msg.id);
     const guild = msg.guildID && msg.channel.guild;
-    const members = guild && guild.members;
-    const userMember = members.find(m => m.id === uid);
-    const botMember = members && members.find(m => m.id === bot.user.id);
+    const members = guild && await guild.fetchMembers({
+      limit: 2, 
+      userIDs: [userId, botId]
+    });
+    const userMember = members && members.find(m => m.id === userId);
+    const botMember = members && members.find(m => m.id === botId);
     if (msg.guildID) {
       
       await require("./modules/reaction-roles")(collections.autoRoles, botMember, userMember, msg, emoji, true);
       
-    } else {
-    
-      await require("./modules/staff-evaluation")(userMember, collections.staffFeedback, msg, bot, emoji);
-
     }
 
   });
@@ -236,7 +146,10 @@ bot.once("ready", async () => {
 
     msg = await bot.getMessage(msg.channel.id, msg.id);
     const guild = msg.guildID && msg.channel.guild;
-    const members = guild && guild.members;
+    const members = guild && await guild.fetchMembers({
+      limit: 2, 
+      userIDs: [userId, bot.user.id]
+    });
     const userMember = members && members.find(m => m.id === userId);
     const botMember = members && members.find(m => m.id === bot.user.id);
     await require("./modules/reaction-roles")(collections.autoRoles, botMember, userMember, msg, emoji, false);
@@ -248,62 +161,6 @@ bot.once("ready", async () => {
     console.log("\x1b[33m%s\x1b[0m", "[Eris]: " + err);
 
   });
-
-  async function getGuildConfig(guildId) {
-    
-    // Look for data in cache
-    const collection = db.collection("GuildLogInfo");
-    let guildConfig = database.cache.get(guildId + "logs");
-    
-    if (!guildConfig) {
-
-      // Check if we have the DB client 
-      if (!database.mongoClient) {
-
-        throw new Error("Database not defined");
-
-      }
-      
-      // Get data from server
-      guildConfig = await collection.findOne({guildId: guildId});
-      
-      // Update cache
-      database.cache.set(guildId + "logs", guildConfig);
-
-    }
-    
-    // Return data
-    return guildConfig;
-    
-  }
-
-  bot.on("messageDelete", async msg => {
-
-    const guildConfig = msg.channel.guild && await getGuildConfig(msg.channel.guild.id);
-    await require("./modules/logs")(bot, msg, guildConfig, true);
-
-  });
-  
-  bot.on("messageUpdate", async (newMessage, oldMessage) => {
-    
-    try {
-      
-      newMessage = await bot.getMessage(newMessage.channel.id, newMessage.id);
-
-    } catch (err) {
-
-      console.log("\x1b[33m%s\x1b[0m", "[messageUpdate] Couldn't get message: " + err);
-
-    }
-
-    const guildConfig = newMessage.channel.guild && await getGuildConfig(newMessage.channel.guild.id);
-    if (guildConfig) await require("./modules/logs")(bot, newMessage, guildConfig, false, oldMessage);
-
-  });
-
-  // Load Twitter module
-  await require("./modules/twitter-transmitter").setupAppClient(bot);
-  await require("./modules/twitter-transmitter").setCollections(collections);
   
   // Load the web server
   require("./server")(bot, collections);
