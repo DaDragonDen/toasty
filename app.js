@@ -61,12 +61,17 @@ import "dotenv/config";
     // Initialize the client.
     await storeClientAndCollections(bot, collections);
     
-    // Initalize the commands.
     const files = fs.readdirSync(path.join(dirname(fileURLToPath(import.meta.url)), "commands"));
 
     for (let x = 0; files.length > x; x++) {
 
-      await import("./commands/" + files[x]).default();
+      const { default: module } = await import(`./commands/${files[x]}`);
+
+      if (typeof module === "function") {
+        
+        await module();
+
+      }
 
     }
 
