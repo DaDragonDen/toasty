@@ -1,19 +1,14 @@
-module.exports = (async () => {
-  
-  // Create client
-  const MongoDB = require("mongodb");
+import MongoDB from "mongodb";
+
+export default async () => {
+
   const MDBC = new MongoDB.MongoClient(
     process.env.mongoDomain, 
     { useNewUrlParser: true, useUnifiedTopology: true }
   );
+  
   await MDBC.connect();
 
-  // Create cache
-  const NCache = require("node-cache");
-  const cache = new NCache();
-  return {
-    mongoClient: MDBC,
-    cache: cache
-  };
+  return MDBC;
 
-})();
+};

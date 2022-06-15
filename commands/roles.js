@@ -1,182 +1,191 @@
-const Commands = require("../commands");
+import { Command } from "../commands.js";
 
-const NewRRRegex = /new( -(e|emoji) (?<emoji>\S+))?( -(c|cid|channel|channelid) (?<channelId>\S+))?( -(m|mid|message|messageId) (?<messageId>\S+))?( -(r|rid|role|roleid|) (?<roleId>\S+))?/mi;
+// roleType: 0 (reaction), 1 (default), 2 (self)
+async function setupRole(discordClient, interaction, collections, roleType) {
 
-module.exports = async (_, collections) => {
+  const {options = [{}], name: action} = interaction.data.options.find(option => option.type === 1);
+  const args = {
+    channelId: (options.find(option => option.name === "channel") || {}).value,
+    messageId: (options.find(option => option.name === "message_id") || {}).value,
+    roleId: (options.find(option => option.name === "role") || {}).value,
+    emoji: (options.find(option => option.name === "emoji") || {}).value,
+    noExisting: options.find(option => option.name === "no_existing"),
+    noBots: options.find(option => option.name === "no_bots")
+  };
+  let response;
 
-  // roleType: 0 (reaction), 1 (default), 2 (self)
-  async function setupRole(bot, interaction, roleType) {
+  const emoji = args.emoji && args.emoji.includes("<") ? args.emoji.substring(1, args.emoji.length - 1) : args.emoji;
+  let reactMessage;
 
-    if (interaction) {
+  if (roleType === 0 && action !== "list") {
 
-      const options = interaction.data.options;
-      const action = options.find(option => option.type === 1);
-      const Input = {
-        channelId: ((action.options || [{}]).find(option => option.name === "channel") || {}).value,
-        messageId: ((action.options || [{}]).find(option => option.name === "message_id") || {}).value,
-        roleId: ((action.options || [{}]).find(option => option.name === "role") || {}).value,
-        emoji: ((action.options || [{}]).find(option => option.name === "emoji") || {}).value,
-        noExisting: (action.options || [{}]).find(option => option.name === "no_existing"),
-        noBots: (action.options || [{}]).find(option => option.name === "no_bots")
-      };
-      let emoji;
-      let response;
-      
-      // Make sure every variable was supplied
-      if (!action.name === "list" && (!Input.roleId || (roleType === 0 && (!Input.channelId || !Input.messageId || !Input.emoji)))) {
+    // Now let's make sure that the bot can access the message and channel
+    try {
 
-        response = "What's the " + (roleType !== 0 || Input.emoji ? (
-          (
-            roleType !== 0 || Input.channelId ? (
-              roleType !== 0 || Input.messageId ? "role" : "message"
-            ) : "channel"
-          ) + " ID"
-        ) : "emoji") + "?";
+      reactMessage = await discordClient.getMessage(args.channelId, args.messageId);
 
-        return await interaction.createFollowup(response); 
+    } catch (err) {
 
-      }
+      return await interaction.createFollowup(`Message ${args.messageId} doesn't exist in <#${args.channelId}>`);
 
-      emoji = Input.emoji && Input.emoji.includes("<") ? Input.emoji.substring(1, Input.emoji.length - 1) : Input.emoji;
-      let reactMessage;
-      if (roleType === 0 && action.name !== "list") {
+    }
 
-        // Now let's make sure that the bot can access the message and channel
-        try {
+    // Let's make sure that we can use that emoji
+    const msg = await discordClient.createMessage(interaction.channel_id, "Testing emoji accessibility...");
+    try {
 
-          reactMessage = await bot.getMessage(Input.channelId, Input.messageId);
+      await msg.addReaction(emoji);
 
-        } catch (err) {
+    } catch (err) {
 
-          return await interaction.createFollowup("Message " + Input.messageId + " doesn't exist in <#" + Input.channelId + ">");
+      await msg.delete();
+      return await interaction.createFollowup("I couldn't add that emoji to your message! Do I have permission to react in this channel or are you just flexing your Nitro?");
 
-        }
+    }
 
-        // Let's make sure that we can use that emoji
-        const msg = await bot.createMessage(interaction.channel_id, "Testing emoji accessibility...");
-        try {
+    // Check permission in the channel
+    const ReactChannel = discordClient.getChannel(args.channelId);
+    if (ReactChannel && !ReactChannel.permissionsOf(discordClient.user.id).has("addReactions")) {
 
-          await msg.addReaction(emoji);
-
-        } catch (err) {
-
-          await msg.delete();
-          return await interaction.createFollowup("I couldn't add that emoji to your message! Do I have permission to react in this channel or are you flexing your Nitro?");
-
-        }
-
-        // Check permission in the channel
-        const ReactChannel = bot.getChannel(Input.channelId);
-        if (ReactChannel && !ReactChannel.permissionsOf(bot.user.id).has("addReactions")) {
-
-          await msg.delete();
-          return await interaction.createFollowup("I don't have permission to react in <#" + Input.channelId + ">...");
-
-        }
-
-      }
-      
-      // Register this into the database
-      const guild = bot.guilds.find(possibleGuild => possibleGuild.id === interaction.guildID);
-      const member = guild.members.find(possibleMember => possibleMember.id === interaction.member.user.id);
-      if (action.name === "add") {
-
-        if (!member.permissions.has("manageRoles")) {
-
-          return await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
-
-        }
-
-        await collections.autoRoles.insertOne({
-          messageId: Input.messageId,
-          channelId: Input.channelId,
-          emoji: emoji,
-          type: roleType,
-          roleId: Input.roleId
-        });
-
-      } else if (action.name === "get") {
-
-        // Check if role exists
-        const role = await collections.autoRoles.findOne({roleId: Input.roleId, type: 2});
-        if (guild.roles.find(possibleRole => possibleRole.id === Input.roleId) && role) {
-
-          await member.addRole(role.roleId, "Asked for it");
-          return await interaction.createFollowup("It's yours, my friend.")
-
-        }
-
-        return await interaction.createFollowup("That role isn't on the table!");
-
-      } else if (action.name === "list") {
-
-        const roles = await collections.autoRoles.find({type: roleType}).toArray();
-        const rolesToDelete = [];
-        let descRoles = "";
-
-        for (let i = 0; roles.length > i; i++) {
-            
-          // Check if role exists
-          const guildRole = guild.roles.find(possibleRole => possibleRole.id === roles[i].roleId);
-
-          if (!guildRole) {
-
-            rolesToDelete.push(roles[i].roleId);
-            continue;
-
-          }
-          
-          const roleIcon = roles[i].emoji && roles[i].emoji.includes(":") ? "<" + roles[i].emoji + ">" : roles[i].emoji || "🔖";
-          descRoles = descRoles + (i !== 0 ? "\n" : "") + roleIcon + " **<@&" + guildRole.id + ">**" + (roleType === 0 ? " [[Attachment]](https://discord.com/channels/" + guild.id + "/" + roles[i].channelId + "/" + roles[i].messageId + ")" : "");
-          
-        }
-
-        response = {
-          content: descRoles !== "" ? (roleType === 2 ? "All members can get these roles at the moment:" : (
-            roleType === 1 ? "Here are the roles I'm giving the new members now:" : (
-              roleType === 0 ? "Here are the current reaction roles:" : "If returning members had these roles before they left, I'll give them back:"
-            )
-          )) : "There aren't any roles I'm giving at the moment.",
-          embeds: descRoles !== "" ? [{
-            description: descRoles
-          }] : undefined
-        };
-        return await interaction.createFollowup(response);
-
-      }
-      
-      let affectedMembers = 0;
-      if (roleType === 0) {
-
-        // Add the reaction
-        await reactMessage.addReaction(emoji);
-        if (msg) await msg.delete();
-
-      } else if (roleType === 1 && !Input.noExisting) {
-
-        // Give this role to existing members
-        const guildMembers = guild.members.map(possibleMember => possibleMember);
-        for (let i = 0; guildMembers.length > i; i++) {
-
-          if (!guildMembers[i].roles.find(roleId => Input.roleId === roleId) && (!guildMembers[i].bot || !Input.noBots)) {
-
-            await guildMembers[i].addRole(Input.roleId, "Adding default role to existing members");
-            affectedMembers++;
-
-          }
-
-        }
-
-      }
-      
-      // Everything is OK!
-      return await interaction.createFollowup("Role added!" + (roleType === 1 ? " Gave the role to " + affectedMembers + " existing members too." : ""));
+      await msg.delete();
+      return await interaction.createFollowup("I don't have permission to react in <#" + args.channelId + ">...");
 
     }
 
   }
+  
+  // Register this into the database
+  const guild = discordClient.guilds.find(possibleGuild => possibleGuild.id === interaction.guildID);
+  const member = guild.members.find(possibleMember => possibleMember.id === interaction.member.user.id);
+  switch (action) {
 
-  new Commands.new("reactionroles", "Configures reaction roles", async (bot, interaction) => await setupRole(bot, interaction, 0), 0, [
+    case "add":
+
+      if (!member.permissions.has("manageRoles")) {
+
+        return await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+
+      }
+
+      await collections.autoRoles.insertOne({
+        messageId: args.messageId,
+        channelId: args.channelId,
+        emoji: emoji,
+        type: roleType,
+        roleId: args.roleId
+      });
+      break;
+
+    case "get": {
+
+      // Check if role exists
+      const role = await collections.autoRoles.findOne({roleId: args.roleId, type: 2});
+      if (guild.roles.find(possibleRole => possibleRole.id === args.roleId) && role) {
+
+        await member.addRole(role.roleId, "Asked for it");
+        return await interaction.createFollowup("It's yours, my friend.");
+
+      }
+
+      return await interaction.createFollowup("That role isn't on the table!");
+
+    }
+    
+    case "list": {
+
+      const roles = await collections.autoRoles.find({type: roleType}).toArray();
+      let descRoles = "";
+
+      for (let i = 0; roles.length > i; i++) {
+          
+        // Check if role exists
+        const guildRole = guild.roles.find(possibleRole => possibleRole.id === roles[i].roleId);
+
+        if (guildRole) {
+
+          const roleIcon = roles[i].emoji && roles[i].emoji.includes(":") ? "<" + roles[i].emoji + ">" : roles[i].emoji || "🔖";
+          descRoles = descRoles + (i !== 0 ? "\n" : "") + roleIcon + " **<@&" + guildRole.id + ">**" + (roleType === 0 ? " [[Attachment]](https://discord.com/channels/" + guild.id + "/" + roles[i].channelId + "/" + roles[i].messageId + ")" : "");
+
+        } else {
+
+          // Remove the role from the collection.
+          await collections.autoRoles.deleteOne({type: roleType, roleId: roles[i].roleId});
+
+        }
+        
+      }
+
+      response = {
+        content: descRoles !== "" ? (roleType === 2 ? "All members can get these roles at the moment:" : (
+          roleType === 1 ? "Here are the roles I'm giving the new members now:" : (
+            roleType === 0 ? "Here are the current reaction roles:" : "If returning members had these roles before they left, I'll give them back:"
+          )
+        )) : "There aren't any roles I'm giving at the moment.",
+        embeds: descRoles !== "" ? [{
+          description: descRoles
+        }] : undefined
+      };
+      return await interaction.createFollowup(response);
+
+    }
+
+    case "delete": {
+
+      // Verify that the user can manage roles.
+      if (!member.permissions.has("manageRoles")) {
+
+        return await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+
+      }
+
+      // Delete the role.
+      await collections.autoRoles.deleteOne({type: roleType, roleId: args.roleId});
+
+      // Tell the user that we're finished.
+      return await interaction.createFollowup("Done!");
+
+    }
+
+    default:
+      break;
+
+  }
+  
+  let affectedMembers = 0;
+  if (roleType === 0) {
+
+    // Add the reaction
+    await reactMessage.addReaction(emoji);
+
+  } else if (roleType === 1 && !args.noExisting) {
+
+    // Give this role to existing members
+    const guildMembers = guild.members.map(possibleMember => possibleMember);
+    for (let i = 0; guildMembers.length > i; i++) {
+
+      if (!guildMembers[i].roles.find(roleId => args.roleId === roleId) && (!guildMembers[i].discordClient || !args.noBots)) {
+
+        await guildMembers[i].addRole(args.roleId, "Adding default role to existing members");
+        affectedMembers++;
+
+      }
+
+    }
+
+  }
+  
+  // Everything is OK!
+  return await interaction.createFollowup("Role added!" + (roleType === 1 ? " Gave the role to " + affectedMembers + " existing members too." : ""));
+
+}
+
+// Set up slash commands.
+new Command({
+  name: "reactionroles", 
+  description: "Configures reaction roles", 
+  action: async ({discordClient, collections, interaction}) => await setupRole(discordClient, interaction, collections, 0), 
+  cooldown: 0, 
+  slashOptions: [
     {
       name: "add",
       description: "Give a member a role when they react to a message",
@@ -231,9 +240,15 @@ module.exports = async (_, collections) => {
       description: "Shows the list of reaction roles, their channels, and their assigned message IDs",
       type: 1
     }
-  ]);
+  ]
+});
 
-  new Commands.new("defaultroles", "Configure roles given when people join", async (bot, interaction) => await setupRole(bot,interaction, 1), 0, [
+new Command({
+  name: "defaultroles", 
+  description: "Configure roles given when people join", 
+  action: async ({discordClient, collections, interaction}) => await setupRole(discordClient, interaction, collections, 1), 
+  cooldown: 0, 
+  slashOptions: [
     {
       name: "add",
       description: "Add a role for me to give when new members join",
@@ -271,9 +286,15 @@ module.exports = async (_, collections) => {
       description: "List the roles I give when new members join",
       type: 1
     }
-  ]);
+  ]
+});
 
-  new Commands.new("selfroles", "Configure obtainable roles", async (bot, interaction) => await setupRole(bot, interaction, 2), 0, [
+new Command({
+  name: "selfroles", 
+  description: "Configure obtainable roles", 
+  action: async ({discordClient, collections, interaction}) => await setupRole(discordClient, interaction, collections, 2), 
+  cooldown: 0, 
+  slashOptions: [
     {
       name: "add",
       description: "Add a role that can be obtained by anyone in the server",
@@ -315,6 +336,5 @@ module.exports = async (_, collections) => {
       description: "List all obtainable self-roles",
       type: 1
     }
-  ]);
-
-};
+  ]
+});

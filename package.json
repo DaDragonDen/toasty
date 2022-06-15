@@ -1,16 +1,31 @@
 {
+  "name": "toasty",
   "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "exports": "./app.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DaDragonDen/toasty.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DaDragonDen/toasty/issues"
+  },
+  "scripts": {
+    "start": "node app"
+  },
+  "homepage": "https://github.com/DaDragonDen/toasty#readme",
   "dependencies": {
-    "dotenv": "^8.6.0",
+    "dotenv": "^16.0.1",
     "ejs": "^3.1.6",
-    "eris": "^0.16.1",
+    "eris": "^0.17.0",
     "express": "^4.17.1",
-    "mongodb": "^3.7.3",
+    "mongodb": "^4.7.0",
     "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "eslint": "^8.3.0",
-    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.25.3"
   }
 }

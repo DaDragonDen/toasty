@@ -1,16 +1,40 @@
 const commands = {};
-let bot;
 const cooledUsers = {};
-
-require("dotenv").config();
-
+const followups = {};
 let configuredCommands = [];
+let _discordClient;
+let _collections;
+
 class Command {
 
+  constructor({name, description, action, cooldown, slashOptions, ephemeral}) {
+
+    console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
+
+    // Check if the command already exists
+    if (commands[name]) {
+
+      throw new Error("Command " + name + " already exists");
+
+    }
+    
+    // Create the command
+    this.name = name;
+    this.action = action;
+    this.description = description;
+    this.cooldown = cooldown === false ? 0 : cooldown || 0;
+    this.slashOptions = slashOptions;
+    this.ephemeral = ephemeral;
+    commands[name] = this;
+    
+    console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
+
+  }
+  
   async execute(interaction) {
 
     // Acknowledge the interaction
-    await interaction.acknowledge();
+    await interaction.defer(this.ephemeral ? 64 : undefined);
 
     // Check if the user is under cooldown
     const AuthorId = (interaction.member || interaction.user).id;
@@ -18,7 +42,7 @@ class Command {
     const RemainingCooldown = cooledUsers[AuthorId] ? (cooledUsers[AuthorId][this.name] + this.cooldown) - ExecuteTime : 0;
     if (cooledUsers[AuthorId] && RemainingCooldown > 0) {
 
-      await bot.createMessage(interaction.channel_id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
+      await _discordClient.createMessage(interaction.channel_id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
       return;
 
     }
@@ -29,13 +53,11 @@ class Command {
     // Execute the command
     try {
 
-      return await this.action(bot, interaction);
+      await this.action({discordClient: _discordClient, interaction, collections: _collections});
 
-    } catch (err) {
+    } catch ({message}) {
 
-      console.log(err);
-
-      return await interaction.createFollowup(interaction.id, interaction.token, {content: "Uh oh. Something real bad happened. Let's try that again."});
+      await interaction.createFollowup(message);
 
     }
 
@@ -70,7 +92,7 @@ class Command {
 
         console.log("\x1b[36m%s\x1b[0m", "[Commands] " + (this.slashOptions ? "Creating" : "Deleting") + " interaction for command \"" + this.name + "\"...");
 
-        await bot.createCommand({
+        await _discordClient.createCommand({
           name: this.name,
           description: this.description,
           options: this.slashOptions
@@ -92,31 +114,6 @@ class Command {
       console.log("\x1b[32m%s\x1b[0m", "[Commands] Removed interaction for command \"" + this.name + "\"...");
 
     }
-
-  }
-  
-  constructor(name, description, action, cooldown, slashOptions) {
-
-    console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
-
-    // Check if the command already exists
-    if (commands[name]) {
-
-      throw new Error("Command " + name + " already exists");
-
-    }
-    
-    // Create the command
-    this.name = name;
-    this.action = action;
-    this.description = description;
-    this.cooldown = cooldown === false ? 0 : cooldown || 0;
-    this.slashOptions = slashOptions;
-    commands[name] = this;
-    
-    console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
-
-    return commands[name];
 
   }
 
@@ -163,12 +160,12 @@ function getCommand(commandName) {
 
 }
 
-async function initialize(client) {
+async function storeClientAndCollections(discordClient, collections) {
 
   // Get the already configured commands
   try {
     
-    configuredCommands = await client.getCommands();
+    configuredCommands = await discordClient.getCommands();
 
   } catch (err) {
 
@@ -177,36 +174,44 @@ async function initialize(client) {
   }
 
   // Listen to interactions
-  client.on("interactionCreate", async (interaction) => {
+  discordClient.on("interactionCreate", async (interaction) => {
     
-    let interactionName, command, response;
-
+    let interactionName, command;
+    
     // Make sure it's a command
-    if (interaction.type !== 2) return;
+    if (interaction.type === 2) {
 
-    // Check if the command exists
-    interactionName = interaction.data.name;
-    command = commands[interactionName];
-    
-    if (command) {
-
-      await command.execute(interaction);
+      // Check if the command exists
+      interactionName = interaction.data.name;
+      command = commands[interactionName];
+      
+      if (command) {
+  
+        await command.execute(interaction);
+  
+      } else {
+  
+        await discordClient.deleteCommand(interaction.data.id);
+  
+      }
 
     } else {
 
-      await bot.deleteCommand(interaction.data.id);
+      command = commands[followups[interaction.message.id]];
+      if (command) {
 
+        followups[interaction.message.id] = undefined;
+        await command.execute(interaction, true);
+        
+      }
+      
     }
-
 
   });
 
-  bot = client;
+  _discordClient = discordClient;
+  _collections = collections;
 
 }
 
-// Send the exports!
-exports.initialize = initialize;
-exports.get = getCommand;
-exports.list = listCommands();
-exports.new = Command;
+export {storeClientAndCollections, getCommand, listCommands, Command};
