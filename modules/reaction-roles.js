@@ -1,4 +1,4 @@
-module.exports = async (collection, botMember, userMember, msg, emoji, add) => {
+export default async (collection, botMember, userMember, msg, emoji, add) => {
 
   try {
 
