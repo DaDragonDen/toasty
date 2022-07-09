@@ -136,7 +136,7 @@ import "dotenv/config";
       const botMember = members && members.find(m => m.id === botId);
       if (msg.guildID) {
         
-        (await import("./modules/reaction-roles")).default(collections.autoRoles, botMember, userMember, msg, emoji, true);
+        (await import("./modules/reaction-roles.js")).default(collections.autoRoles, botMember, userMember, msg, emoji, true);
         
       }
 
@@ -152,7 +152,7 @@ import "dotenv/config";
       });
       const userMember = members && members.find(m => m.id === userId);
       const botMember = members && members.find(m => m.id === bot.user.id);
-      (await import("./modules/reaction-roles")).default(collections.autoRoles, botMember, userMember, msg, emoji, false);
+      (await import("./modules/reaction-roles.js")).default(collections.autoRoles, botMember, userMember, msg, emoji, false);
 
     });
 
