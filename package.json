@@ -17,11 +17,8 @@
   "homepage": "https://github.com/DaDragonDen/toasty#readme",
   "dependencies": {
     "dotenv": "^16.0.1",
-    "ejs": "^3.1.6",
     "eris": "github:DonovanDMC/eris#interactions-rewrite",
-    "express": "^4.17.1",
-    "mongodb": "^4.7.0",
-    "node-cache": "^5.1.2"
+    "mongodb": "^4.7.0"
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^5.33.1",
