@@ -35,7 +35,6 @@ declare global {
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
 
   // Load the Discord client.
-  console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to Discord...");
   const bot = new Client(process.env.TOKEN, {
     intents: ["allNonPrivileged", "guildMessages", "guildMembers"]
   });
