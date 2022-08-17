@@ -35,6 +35,7 @@ declare global {
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
 
   // Load the Discord client.
+  console.log("\x1b[36m%s\x1b[0m", "[Client] Connecting to Discord...");
   const bot = new Client(process.env.TOKEN, {
     intents: ["allNonPrivileged", "guildMessages", "guildMembers"]
   });
@@ -60,7 +61,7 @@ declare global {
 
     // Time how long it takes for the bot to really start
     const startTime = new Date().getTime();
-    console.log("\x1b[32m%s\x1b[0m", "[Client] Logged in!");
+    console.log("\x1b[32m%s\x1b[0m", "[Client] Successfully connected to Discord!");
 
     // Check for the last bump time
     if (!bumpTimeout) {
