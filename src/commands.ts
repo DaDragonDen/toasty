@@ -1,13 +1,38 @@
-const commands = {};
-const cooledUsers = {};
-const followups = {};
-let configuredCommands = [];
-let _discordClient;
-let _collections;
+import { ApplicationCommandOptions, Client, CommandInteraction, EventListeners } from "eris";
+import { Collection } from "mongodb";
+
+const commands: {[name: string]: Command} = {};
+let configuredCommands: any[] = [];
+let _discordClient: Client;
+let _collections: {[name: string]: Collection} = {};
+
+export interface CommandActionProperties {
+  discordClient: Client;
+  interaction: CommandInteraction;
+  collections: {[name: string]: Collection};
+}
+
+interface CommandProperties {
+  name: string;
+  description: string;
+  action: Function;
+  slashOptions?: ApplicationCommandOptions[];
+  cooldown?: number;
+  ephemeral?: boolean;
+}
 
 class Command {
 
-  constructor({name, description, action, cooldown, slashOptions, ephemeral}) {
+  name: string;
+  description: string;
+  cooldown: number;
+  action: Function;
+  slashOptions?: ApplicationCommandOptions[];
+  ephemeral: boolean;
+  cooledUsers: {[userId: string]: number} = {};
+  deleteInteractionOnFirstUsage?: boolean;
+
+  constructor({name, description, action, cooldown = 0, slashOptions, ephemeral = false}: CommandProperties) {
 
     console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
 
@@ -22,8 +47,8 @@ class Command {
     this.name = name;
     this.action = action;
     this.description = description;
-    this.cooldown = cooldown === false ? 0 : cooldown || 0;
-    this.slashOptions = slashOptions;
+    this.cooldown = cooldown;
+    if (slashOptions) this.slashOptions = slashOptions;
     this.ephemeral = ephemeral;
     commands[name] = this;
     
@@ -31,53 +56,49 @@ class Command {
 
   }
   
-  async execute(interaction) {
+  async execute(interaction: CommandInteraction) {
 
     // Acknowledge the interaction
     await interaction.defer(this.ephemeral ? 64 : undefined);
 
-    // Check if the user is under cooldown
-    const AuthorId = (interaction.member || interaction.user).id;
-    const ExecuteTime = new Date().getTime();
-    const RemainingCooldown = cooledUsers[AuthorId] ? (cooledUsers[AuthorId][this.name] + this.cooldown) - ExecuteTime : 0;
-    if (cooledUsers[AuthorId] && RemainingCooldown > 0) {
+    // Make sure we have an ID.
+    const AuthorId = (interaction.member ?? interaction.user)?.id;
+    if (!AuthorId) return;
 
-      await _discordClient.createMessage(interaction.channel_id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
+    // Now check if the creator is under a cooldown.
+    const ExecuteTime = new Date().getTime();
+    const RemainingCooldown = this.cooledUsers[AuthorId] ? (this.cooledUsers[this.name] + this.cooldown) - ExecuteTime : 0;
+    if (this.cooledUsers[AuthorId] && RemainingCooldown > 0) {
+
+      await _discordClient.createMessage(interaction.channel.id, "<@" + AuthorId + "> You're moving too fast...even for me! Give me " + RemainingCooldown / 1000 + " more seconds.");
       return;
 
     }
 
     // Put the user under cooldown
-    this.applyCooldown(AuthorId);
+    this.applyCooldown(AuthorId, this.cooldown);
 
     // Execute the command
     try {
 
       await this.action({discordClient: _discordClient, interaction, collections: _collections});
 
-    } catch ({message}) {
+    } catch (err: any) {
 
-      await interaction.createFollowup(message);
+      await interaction.createFollowup(err instanceof Error ? err.message : "Something bad happened. How about running that by me one more time?");
 
     }
 
   }
 
-  applyCooldown(userId, milliseconds) {
+  applyCooldown(userId: string, milliseconds: number) {
 
     const ExecuteTime = new Date().getTime();
-
-    if (!cooledUsers[userId]) {
-
-      cooledUsers[userId] = {};
-
-    }
-
-    cooledUsers[userId][this.name] = milliseconds ? ExecuteTime + milliseconds : ExecuteTime;
+    this.cooledUsers[userId] = milliseconds ? ExecuteTime + milliseconds : ExecuteTime;
 
   }
 
-  setAction(action) {
+  setAction(action: Function) {
 
     this.action = action;
 
@@ -95,7 +116,8 @@ class Command {
         await _discordClient.createCommand({
           name: this.name,
           description: this.description,
-          options: this.slashOptions
+          options: this.slashOptions,
+          type: 1
         });
 
         console.log("\x1b[32m%s\x1b[0m", "[Commands] Successfully created interaction for command \"" + this.name + "\"!");
@@ -110,7 +132,7 @@ class Command {
     } else if (!this.slashOptions && interactionCmdInfo) {
       
       console.log("\x1b[36m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
-      this.deleteInteraction = true;
+      this.deleteInteractionOnFirstUsage = true;
       console.log("\x1b[32m%s\x1b[0m", "[Commands] Removed interaction for command \"" + this.name + "\"...");
 
     }
@@ -120,47 +142,13 @@ class Command {
 }
 
 // Functions for other scripts to use
-function listCommands() {
+function listCommands(): {[name: string]: any} {
 
   return commands;
 
 }
 
-function getCommand(commandName) {
-
-  if (!commandName) {
-
-    throw new Error("No command name provided");
-
-  }
-  
-  let command = commands[commandName];
-  
-  // Find the command by alias
-  if (!command) {
-    
-    for (const possibleCommand in commands) {
-
-      if (commands.hasOwnProperty(possibleCommand)) {
-
-        if (commands[possibleCommand].aliases.find(alias => alias === commandName)) {
-
-          command = commands[possibleCommand];
-          break;
-
-        }
-
-      }
-
-    }
-    
-  }
-  
-  return command;
-
-}
-
-async function storeClientAndCollections(discordClient, collections) {
+async function storeClientAndCollections(discordClient: Client, collections: {[name: string]: Collection}) {
 
   // Get the already configured commands
   try {
@@ -174,7 +162,7 @@ async function storeClientAndCollections(discordClient, collections) {
   }
 
   // Listen to interactions
-  discordClient.on("interactionCreate", async (interaction) => {
+  discordClient.on("interactionCreate", async (interaction: EventListeners["interactionCreate"][0]) => {
     
     let interactionName, command;
     
@@ -195,16 +183,6 @@ async function storeClientAndCollections(discordClient, collections) {
   
       }
 
-    } else {
-
-      command = commands[followups[interaction.message.id]];
-      if (command) {
-
-        followups[interaction.message.id] = undefined;
-        await command.execute(interaction, true);
-        
-      }
-      
     }
 
   });
@@ -214,4 +192,4 @@ async function storeClientAndCollections(discordClient, collections) {
 
 }
 
-export {storeClientAndCollections, getCommand, listCommands, Command};
+export {storeClientAndCollections, listCommands, Command};
