@@ -15,7 +15,8 @@ export interface CommandActionProperties {
 interface CommandProperties {
   name: string;
   description: string;
-  action: Function;
+  // eslint-disable-next-line no-unused-vars
+  action: ({discordClient, collections, interaction}: CommandActionProperties) => void;
   slashOptions?: ApplicationCommandOptions[];
   cooldown?: number;
   ephemeral?: boolean;
