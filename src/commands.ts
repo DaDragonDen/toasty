@@ -184,6 +184,10 @@ async function storeClientAndCollections(discordClient: Client, collections: {[n
   
       }
 
+    } else if (interaction.type === 3) {
+
+      
+
     }
 
   });
