@@ -3,12 +3,13 @@ import { Collection } from "mongodb";
 import { Command, CommandActionProperties } from "../commands.js";
 
 // roleType: 0 (reaction), 1 (default), 2 (self)
-async function setupRole(discordClient: Client, interaction: CommandInteraction, collections: {[name: string]: Collection}, roleType: number) {
+async function setupRole(discordClient: Client, interaction: CommandInteraction, collections: {[name: string]: Collection}, roleType: number): Promise<void> {
 
   // Verify that we're in a text channel.
   if (!("guild" in interaction.channel)) {
     
-    return await interaction.createFollowup("You can only run this command in a guild!");
+    await interaction.createFollowup("You can only run this command in a guild!");
+    return;
 
   }
 
@@ -17,7 +18,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
   const member = guild.members.find(possibleMember => possibleMember.id === interaction.member?.user.id);
   if (!member) {
     
-    return await interaction.createFollowup("I can't find you in the guild member list!");
+    await interaction.createFollowup("I can't find you in the guild member list!");
+    return;
 
   }
 
@@ -25,7 +27,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
   const subCommand = interaction.data.options?.find(option => option.type === 1) as InteractionDataOptionsSubCommand;
   if (!subCommand) {
     
-    return await interaction.createFollowup("Couldn't find sub-command.");
+    await interaction.createFollowup("Couldn't find sub-command.");
+    return;
 
   }
 
@@ -33,7 +36,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
   const {options, name: action} = subCommand;
   if (!options) {
     
-    return await interaction.createFollowup("Couldn't find sub-command options.");
+    await interaction.createFollowup("Couldn't find sub-command options.");
+    return;
 
   }
 
@@ -51,14 +55,16 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
       // Verify the member's permissions.
       if (!member.permissions.has("manageRoles")) {
         
-        return await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+        await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+        return;
 
       }
 
       // Verify the input values.
       if (roleIdInvalid) {
         
-        return await interaction.createFollowup("You didn't give me a role ID to work with.");
+        await interaction.createFollowup("You didn't give me a role ID to work with.");
+        return;
 
       }
 
@@ -74,7 +80,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
         const emoji = options.find(option => option.name === "emoji")?.value;
         if (channelIdInvalid || messageIdInvalid || typeof emoji !== "string") {
 
-          return await interaction.createFollowup("You didn't give me an emoji to work with.");
+          await interaction.createFollowup("You didn't give me an emoji to work with.");
+          return;
 
         }
 
@@ -86,8 +93,9 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
 
         } catch (err) {
     
-          return await interaction.createFollowup(`Message ${messageId} doesn't exist in <#${channelId}>`);
-    
+          await interaction.createFollowup(`Message ${messageId} doesn't exist in <#${channelId}>`);
+          return;
+
         }
         
         // Keep track of the channel and message IDs.
@@ -106,8 +114,9 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
         } catch (err) {
     
           await msg.delete();
-          return await interaction.createFollowup("I couldn't add that emoji to your message! Do I have permission to react in that channel or are you just flexing your Nitro?");
-    
+          await interaction.createFollowup("I couldn't add that emoji to your message! Do I have permission to react in that channel or are you just flexing your Nitro?");
+          return;
+          
         }
 
       }
@@ -140,7 +149,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
       }
 
       // Everything is OK!
-      return await interaction.createFollowup(`Role added! ${roleType === 1 && affectedMembers > 0 ? ` Gave the role to ${affectedMembers} existing members too.` : ""}`);
+      await interaction.createFollowup(`Role added! ${roleType === 1 && affectedMembers > 0 ? ` Gave the role to ${affectedMembers} existing members too.` : ""}`);
+      return;
 
     }
 
@@ -151,11 +161,13 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
       if (guild.roles.find(possibleRole => possibleRole.id === roleId) && role) {
 
         await member.addRole(role.roleId, "Asked for it");
-        return await interaction.createFollowup("It's yours, my friend.");
+        await interaction.createFollowup("It's yours, my friend.");
+        return;
 
       }
 
-      return await interaction.createFollowup("That role isn't on the table!");
+      await interaction.createFollowup("That role isn't on the table!");
+      return;
 
     }
     
@@ -193,7 +205,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
           description: descRoles
         }] : undefined
       };
-      return await interaction.createFollowup(response);
+      await interaction.createFollowup(response);
+      return;
 
     }
 
@@ -202,7 +215,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
       // Verify that the user can manage roles.
       if (!member.permissions.has("manageRoles")) {
 
-        return await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+        await interaction.createFollowup("Sorry, no can do! You don't have permission to manage roles. Did you mean `/selfroles get`?");
+        return;
 
       }
 
@@ -210,7 +224,8 @@ async function setupRole(discordClient: Client, interaction: CommandInteraction,
       await collections.autoRoles.deleteOne({type: roleType, roleId});
 
       // Tell the user that we're finished.
-      return await interaction.createFollowup("Done!");
+      await interaction.createFollowup("Done!");
+      return;
 
     }
 
