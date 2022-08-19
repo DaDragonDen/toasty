@@ -6,38 +6,43 @@ new Command({
   // eslint-disable-next-line no-unused-vars
   action: async ({discordClient, collections, interaction}: CommandActionProperties) => {
 
-    // Make sure they're allowed to eval
-    if ((interaction.member || interaction.user).id !== "419881371004174338") {
+    // Make sure this is a command interaction.
+    if (interaction.type === 2) {
+
+      // Make sure they're allowed to eval
+      if ((interaction.member || interaction.user).id !== "419881371004174338") {
+        
+        await interaction.createFollowup("I don't think I want to do that.");
+        return;
+
+      }
       
-      await interaction.createFollowup("I don't think I want to do that.");
-      return;
+      // Make sure we have a code string.
+      const code = interaction.data.options?.find(option => option.name === "code")?.value;
+      if (typeof code !== "string") {
 
-    }
-    
-    // Make sure we have a code string.
-    const code = interaction.data.options?.find(option => option.name === "code")?.value;
-    if (typeof code !== "string") {
+        await interaction.createFollowup("You need to ");
+        return;
+        
+      }
 
-      await interaction.createFollowup("You need to ");
-      return;
-      
-    }
+      try {
 
-    try {
+        // Run the code.
+        eval(code);
 
-      // Run the code.
-      eval(code);
+        // End the interaction with a response.
+        await interaction.createFollowup("Done!");
 
-      // End the interaction with a response.
-      await interaction.createFollowup("Done!");
+      } catch (err: any) {
 
-    } catch (err: any) {
+        // Return the error.
+        await interaction.createFollowup({
+          content: err.message,
+          embeds: [{description: err.stack}]
+        });
 
-      // Return the error.
-      await interaction.createFollowup({
-        content: err.message,
-        embeds: [{description: err.stack}]
-      });
+      }
 
     }
 

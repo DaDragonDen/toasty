@@ -1,4 +1,4 @@
-import { ApplicationCommandOptions, Client, CommandInteraction, EventListeners } from "eris";
+import { ApplicationCommandOptions, Client, CommandInteraction, ComponentInteraction, EventListeners } from "eris";
 import { Collection } from "mongodb";
 
 const commands: {[name: string]: Command} = {};
@@ -8,7 +8,7 @@ let _collections: {[name: string]: Collection} = {};
 
 export interface CommandActionProperties {
   discordClient: Client;
-  interaction: CommandInteraction;
+  interaction: CommandInteraction | ComponentInteraction;
   collections: {[name: string]: Collection};
 }
 
@@ -17,10 +17,13 @@ interface CommandProperties {
   description: string;
   // eslint-disable-next-line no-unused-vars
   action: (props: CommandActionProperties) => Promise<void>;
-  slashOptions?: ApplicationCommandOptions[];
+  slashOptions: ApplicationCommandOptions[];
   cooldown?: number;
   ephemeral?: boolean;
+  customIds?: string[];
 }
+
+const commandNames: {[custom_id: string]: string} = {};
 
 class Command {
 
@@ -28,12 +31,13 @@ class Command {
   description: string;
   cooldown: number;
   action: Function;
-  slashOptions?: ApplicationCommandOptions[];
+  slashOptions: ApplicationCommandOptions[];
   ephemeral: boolean;
   cooledUsers: {[userId: string]: number} = {};
   deleteInteractionOnFirstUsage?: boolean;
+  customIds?: string[];
 
-  constructor({name, description, action, cooldown = 0, slashOptions, ephemeral = false}: CommandProperties) {
+  constructor({name, description, action, cooldown = 0, slashOptions, ephemeral = false, customIds = []}: CommandProperties) {
 
     console.log("\x1b[36m%s\x1b[0m", "[Commands] Adding " + name + " command...");
 
@@ -43,25 +47,43 @@ class Command {
       throw new Error("Command " + name + " already exists");
 
     }
+
+    // Iterate through the custom IDs.
+    for (let i = 0; customIds.length > i; i++) {
+
+      // Record the custom ID.
+      const customId = customIds[i];
+      commandNames[customId] = name;
+
+    }
     
-    // Create the command
+    // Keep track of the command properties.
     this.name = name;
     this.action = action;
     this.description = description;
     this.cooldown = cooldown;
-    if (slashOptions) this.slashOptions = slashOptions;
+    this.slashOptions = slashOptions;
     this.ephemeral = ephemeral;
+    this.customIds = customIds;
     commands[name] = this;
     
     console.log("\x1b[32m%s\x1b[0m", "[Commands] Finished adding " + name + " command");
 
   }
   
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: CommandInteraction | ComponentInteraction) {
 
     // Acknowledge the interaction
-    await interaction.defer(this.ephemeral ? 64 : undefined);
+    if (interaction.type === 2) {
 
+      await interaction.defer(this.ephemeral ? 64 : undefined);
+
+    } else if (interaction.type === 3) {
+
+      await interaction.deferUpdate();
+
+    }
+    
     // Make sure we have an ID.
     const AuthorId = (interaction.member ?? interaction.user)?.id;
     if (!AuthorId) return;
@@ -165,14 +187,12 @@ async function storeClientAndCollections(discordClient: Client, collections: {[n
   // Listen to interactions
   discordClient.on("interactionCreate", async (interaction: EventListeners["interactionCreate"][0]) => {
     
-    let interactionName, command;
-    
     // Make sure it's a command
     if (interaction.type === 2) {
 
       // Check if the command exists
-      interactionName = interaction.data.name;
-      command = commands[interactionName];
+      const interactionName = interaction.data.name;
+      const command = commands[interactionName];
       
       if (command) {
   
@@ -186,7 +206,16 @@ async function storeClientAndCollections(discordClient: Client, collections: {[n
 
     } else if (interaction.type === 3) {
 
-      
+      // Look for the custom ID.
+      const {custom_id} = interaction.data;
+      const commandName = commandNames[custom_id];
+      const command = commands[commandName];
+
+      if (command) {
+
+        await command.execute(interaction);
+
+      }
 
     }
 

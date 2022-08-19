@@ -28,8 +28,7 @@ declare global {
   const db = dbClient.db("guilds");
   const collections = {
     autoRoles: db.collection("AutoRoles"),
-    interactions: db.collection("Interactions"),
-    questions: db.collection("Questions")
+    roleGroups: db.collection("roleGroups")
   };
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
