@@ -40,6 +40,11 @@ new Command({
           required: true
         }
       ]
+    },
+    {
+      name: "list",
+      description: "Lists all group roles of this server",
+      type: 1
     }
   ],
   action: async ({discordClient, collections, interaction}) => {
@@ -128,7 +133,7 @@ new Command({
       // Check if we're adding or removing a base role to the database.
       switch (subCommand.name) {
 
-        case "add": {
+        case "create": {
 
           // Present the roles to the user.
           let selectMenuOptions: SelectMenuOptions[] = [];
@@ -250,7 +255,13 @@ new Command({
           // Iterate through the roles, and start on the new page number.
           let selectMenuOptions: SelectMenuOptions[] = [];
           let canGoForward: boolean = false;
-          const {selectedRoleIds} = activeInteractions[originalMessage.id];
+          const selectedRoleIds = activeInteractions[originalMessage.id]?.selectedRoleIds;
+          if (!selectedRoleIds) {
+
+            await originalMessage.delete();
+            return;
+
+          }
           for (let i = (newPageNumber - 1) * 24; roles.length > i; i++) {
 
             if (selectMenuOptions.length === 25) {
@@ -374,7 +385,10 @@ new Command({
             {upsert: true}
           );
 
-          // And we're done!
+          // Delete the interaction from the bot's memory.
+          delete activeInteractions[originalMessage.id];
+
+          // Tell the member that we're finished!
           await originalMessage.edit({
             content: `Attached the following roles to <@&${baseRoleId}>: <@&${selectedRoleIds.join(">, <@&")}>`,
             embeds: [],
