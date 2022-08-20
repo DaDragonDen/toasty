@@ -125,86 +125,110 @@ new Command({
 
       }
 
-      // Present the roles to the user.
-      let selectMenuOptions: SelectMenuOptions[] = [];
-      let canGoForward = false;
-      for (let i = 0; roles.length >= i; i++) {
+      // Check if we're adding or removing a base role to the database.
+      switch (subCommand.name) {
 
-        if (selectMenuOptions.length === 25) {
+        case "add": {
 
-          canGoForward = true;
+          // Present the roles to the user.
+          let selectMenuOptions: SelectMenuOptions[] = [];
+          let canGoForward = false;
+          for (let i = 0; roles.length >= i; i++) {
+
+            if (selectMenuOptions.length === 25) {
+
+              canGoForward = true;
+              break;
+
+            }
+
+            const {name, id}: {name: string, id: string} = roles[i];
+            selectMenuOptions.push({
+              label: name,
+              value: id
+            });
+
+          }
+
+          const followup: Message = await interaction.createFollowup({
+            content: `What roles do you want to associate with <@&${baseRole}>?`,
+            components: [
+              {
+                type: 1, 
+                components: [
+                  {
+                    type: 3,
+                    custom_id: "menu",
+                    options: selectMenuOptions,
+                    min_values: 0,
+                    max_values: selectMenuOptions.length
+                  }
+                ]
+              },
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 2,
+                    label: "Previous page",
+                    style: 2,
+                    custom_id: "previous",
+                    disabled: true
+                  },
+                  {
+                    type: 2,
+                    label: "Page 1",
+                    style: 2,
+                    custom_id: "page",
+                    disabled: true
+                  },
+                  {
+                    type: 2,
+                    label: "Next page",
+                    style: 2,
+                    custom_id: "next",
+                    disabled: !canGoForward
+                  }
+                ]
+              },
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 2,
+                    label: "Create role group",
+                    style: 3,
+                    custom_id: "submit",
+                    disabled: true
+                  }
+                ]
+              }
+            ]
+          });
+
+          activeInteractions[followup.id] = {
+            latestActionTime: new Date().getTime(),
+            selectedRoleIds: []
+          };
           break;
 
         }
 
-        const {name, id}: {name: string, id: string} = roles[i];
-        selectMenuOptions.push({
-          label: name,
-          value: id
-        });
+        case "delete": {
+
+          // Try to delete the base from the database.
+          const {deletedCount} = await collections.roleGroups.deleteOne({baseRoleId: baseRole});
+          
+          // Tell the member.
+          await interaction.createFollowup(deletedCount > 0 ? "Done." : "I don't have that base role in my records.");
+          break;
+
+        }
+
+        default:
+          break;
 
       }
-
-      const followup: Message = await interaction.createFollowup({
-        content: `What roles do you want to associate with <@&${baseRole}>?`,
-        components: [
-          {
-            type: 1, 
-            components: [
-              {
-                type: 3,
-                custom_id: "menu",
-                options: selectMenuOptions,
-                min_values: 0,
-                max_values: selectMenuOptions.length
-              }
-            ]
-          },
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                label: "Previous page",
-                style: 2,
-                custom_id: "previous",
-                disabled: true
-              },
-              {
-                type: 2,
-                label: "Page 1",
-                style: 2,
-                custom_id: "page",
-                disabled: true
-              },
-              {
-                type: 2,
-                label: "Next page",
-                style: 2,
-                custom_id: "next",
-                disabled: !canGoForward
-              }
-            ]
-          },
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                label: "Create role group",
-                style: 3,
-                custom_id: "submit",
-                disabled: true
-              }
-            ]
-          }
-        ]
-      });
-
-      activeInteractions[followup.id] = {
-        latestActionTime: new Date().getTime(),
-        selectedRoleIds: []
-      };
 
     } else if (interaction.type === 3) {
 
