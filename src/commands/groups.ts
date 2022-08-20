@@ -5,6 +5,7 @@ interface ActiveInteractions {
   [messageId: string]: {
     selectedRoleIds: string[];
     latestActionTime: number;
+    memberId: string;
   }
 }
 
@@ -213,7 +214,8 @@ new Command({
 
           activeInteractions[followup.id] = {
             latestActionTime: new Date().getTime(),
-            selectedRoleIds: []
+            selectedRoleIds: [],
+            memberId: member.id
           };
           break;
 
@@ -262,7 +264,10 @@ new Command({
     } else if (interaction.type === 3) {
 
       // This is a component interaction, so the menu is open.
+      // Make sure the interaction is from the original member.
       const originalMessage: Message = interaction.message;
+      const interactionCache = activeInteractions[originalMessage.id];
+      if (interactionCache?.memberId !== interaction.member?.id) return;
 
       // Check if the member wants to change the page or submit.
       const {custom_id}: {custom_id: string} = interaction.data;
@@ -279,7 +284,7 @@ new Command({
           // Iterate through the roles, and start on the new page number.
           let selectMenuOptions: SelectMenuOptions[] = [];
           let canGoForward: boolean = false;
-          const selectedRoleIds = activeInteractions[originalMessage.id]?.selectedRoleIds;
+          const selectedRoleIds = interactionCache?.selectedRoleIds;
           if (!selectedRoleIds) {
 
             await originalMessage.delete();
