@@ -28,8 +28,7 @@ declare global {
   const db = dbClient.db("guilds");
   const collections = {
     autoRoles: db.collection("AutoRoles"),
-    interactions: db.collection("Interactions"),
-    questions: db.collection("Questions")
+    roleGroups: db.collection("roleGroups")
   };
 
   console.log("\x1b[32m%s\x1b[0m", "[Client] Database variables updated");
@@ -134,6 +133,46 @@ declare global {
           await member.addRole(defaultRoles[i].roleId, "Giving a default role");
 
         }
+
+      }
+
+    });
+
+    bot.on("guildMemberUpdate", async (guild, member, oldMember) => {
+
+      try {
+
+        // Make sure we have the old member.
+        if (!oldMember) return;
+
+        // Check if the member obtained a new role.
+        const newRoles = member.roles;
+        for (let i = 0; newRoles.length > i; i++) {
+
+          const roleId = newRoles[i];
+          if (!oldMember.roles.find((possibleRoleId) => possibleRoleId === roleId)) {
+
+            // Check if the new role is the base of a role group.
+            const roleGroup = await collections.roleGroups.findOne({baseRoleId: roleId});
+            if (roleGroup) {
+
+              // Give the member some more roles.
+              const {attachedRoleIds} = roleGroup;
+              for (let i = 0; attachedRoleIds.length > i; i++) {
+
+                await member.addRole(attachedRoleIds[i], "Following a role group rule");
+
+              }
+
+            }
+
+          }
+
+        }
+
+      } catch (err: any) {
+
+        console.log(err);
 
       }
 
