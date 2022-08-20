@@ -123,7 +123,7 @@ new Command({
       }
 
       const baseRole: string | number | boolean | undefined = subCommand.options?.find((option) => option.name === "base")?.value;
-      if (!baseRole) {
+      if (!baseRole && subCommand.name !== "list") {
         
         await interaction.createFollowup("You didn't give me a role to work with!");
         return;
@@ -226,6 +226,30 @@ new Command({
           
           // Tell the member.
           await interaction.createFollowup(deletedCount > 0 ? "Done." : "I don't have that base role in my records.");
+          break;
+
+        }
+
+        case "list": {
+
+          // Get the groups.
+          const groups = await collections.roleGroups.find({}).toArray();
+          let message = "";
+          for (let i = 0; groups.length > i; i++) {
+
+            const {baseRoleId, attachedRoleIds} = groups[i];
+            message += `<@&${baseRoleId}> -> <@&${attachedRoleIds.join(">, <@&")}>\n\n`;
+
+          }
+
+          // Tell the member.
+          await interaction.createFollowup(message ? {
+            embeds: [
+              {
+                description: message
+              }
+            ]
+          } : "There are no role groups in this server yet.");
           break;
 
         }
