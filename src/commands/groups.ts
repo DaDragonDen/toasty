@@ -1,4 +1,4 @@
-import { InteractionDataOptionsSubCommand, Message, Role, SelectMenuOptions } from "eris";
+import { Guild, InteractionDataOptionsSubCommand, Member, Message, Role, SelectMenuOptions } from "eris";
 import { Command } from "../commands.js";
 
 interface ActiveInteractions {
@@ -53,8 +53,8 @@ new Command({
     }
 
     // Verify the guild member.
-    const {guild} = interaction.channel;
-    const member = guild.members.find(possibleMember => possibleMember.id === interaction.member?.user.id);
+    const {guild}: {guild: Guild} = interaction.channel;
+    const member: Member | undefined = guild.members.find(possibleMember => possibleMember.id === interaction.member?.user.id);
     if (!member) {
       
       await interaction.createFollowup("I can't find you in the guild member list!");
@@ -70,14 +70,16 @@ new Command({
 
     }
 
-    // Get the bot's highest role.
-    const botMember = guild.members.find(possibleMember => possibleMember.id === discordClient.user.id);
+    // Make sure the bot is in the server.
+    const botMember: Member | undefined = guild.members.find(possibleMember => possibleMember.id === discordClient.user.id);
     if (!botMember) {
       
       await interaction.createFollowup("I can't find myself on the guild member list!");
       return;
 
     }
+
+    // Get the bot's highest role position.
     let highestRolePosition: number = 0;
     for (let i = 0; botMember.roles.length > i; i++) {
 
@@ -89,8 +91,8 @@ new Command({
 
     }
 
- 
-    // Make sure there is at least one role in the guild.
+    // Make sure there is at least one role in the guild, excluding managed roles.
+    // The bot can't give managed roles to members.
     let roles: Role[] = guild.roles.filter((role: Role) => !role.managed && role.position < highestRolePosition);
     if (roles.length === 0) {
 
@@ -99,7 +101,7 @@ new Command({
 
     }
 
-    // Order the roles by their current order.
+    // Order the roles by their current position.
     roles = roles.sort((roleA: Role, roleB: Role) => roleB.position - roleA.position);
 
     // Find out if the member already has a menu open.
@@ -135,7 +137,7 @@ new Command({
 
         }
 
-        const {name, id} = roles[i];
+        const {name, id}: {name: string, id: string} = roles[i];
         selectMenuOptions.push({
           label: name,
           value: id
@@ -143,7 +145,7 @@ new Command({
 
       }
 
-      const followup = await interaction.createFollowup({
+      const followup: Message = await interaction.createFollowup({
         content: `What roles do you want to associate with <@&${baseRole}>?`,
         components: [
           {
@@ -207,11 +209,10 @@ new Command({
     } else if (interaction.type === 3) {
 
       // This is a component interaction, so the menu is open.
-      // Get the current page.
-      const originalMessage = interaction.message;
+      const originalMessage: Message = interaction.message;
 
       // Check if the member wants to change the page or submit.
-      const {custom_id} = interaction.data;
+      const {custom_id}: {custom_id: string} = interaction.data;
       switch (custom_id) {
 
         case "previous":
@@ -224,7 +225,7 @@ new Command({
 
           // Iterate through the roles, and start on the new page number.
           let selectMenuOptions: SelectMenuOptions[] = [];
-          let canGoForward = false;
+          let canGoForward: boolean = false;
           const {selectedRoleIds} = activeInteractions[originalMessage.id];
           for (let i = (newPageNumber - 1) * 24; roles.length > i; i++) {
 
@@ -271,7 +272,7 @@ new Command({
           }
 
           // Update the original followup.
-          await interaction.message.edit({
+          await originalMessage.edit({
             content: interaction.message.content,
             embeds: embed ? [embed] : [],
             components: [
@@ -372,15 +373,16 @@ new Command({
           // Make sure we have options.
           const selectMenu = originalMessage.components?.[0].components?.[0];
           const options = selectMenu && "options" in selectMenu ? selectMenu.options : undefined;
-          if (!selectMenu || !options) return endInteractionWithError();
+          if (!selectMenu || !options) return await endInteractionWithError();
 
           // Make sure we have values.
           const rolesInSelectMenu = "values" in interaction.data ? interaction.data.values : undefined;
           if (!rolesInSelectMenu) return endInteractionWithError();
 
           // Make sure the interaction was recorded.
-          if (!activeInteractions[originalMessage.id]) return endInteractionWithError();
+          if (!activeInteractions[originalMessage.id]) return await endInteractionWithError();
 
+          // Iterate through the options shown in the select menu.
           for (let i = 0; options.length > i; i++) {
 
             const currentRoleId = options[i].value;
