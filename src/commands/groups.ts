@@ -123,10 +123,19 @@ new Command({
 
       }
 
-      const baseRole: string | number | boolean | undefined = subCommand.options?.find((option) => option.name === "base")?.value;
-      if (!baseRole && subCommand.name !== "list") {
+      const baseRoleId: string | number | boolean | undefined = subCommand.options?.find((option) => option.name === "base")?.value;
+      if (!baseRoleId && subCommand.name !== "list") {
         
         await interaction.createFollowup("You didn't give me a role to work with!");
+        return;
+
+      }
+
+      // Check if the base role is higher than the bot's highest role.
+      const baseRole = baseRoleId ? guild.roles.find((possibleRole) => possibleRole.id === baseRoleId) : undefined;
+      if (baseRole && baseRole.position >= highestRolePosition) {
+
+        await interaction.createFollowup("That role is higher or the same as my highest role, so I can't give that role to others.");
         return;
 
       }
@@ -157,7 +166,7 @@ new Command({
           }
 
           const followup: Message = await interaction.createFollowup({
-            content: `What roles do you want to associate with <@&${baseRole}>?`,
+            content: `What roles do you want to associate with <@&${baseRoleId}>?`,
             components: [
               {
                 type: 1, 
@@ -224,7 +233,7 @@ new Command({
         case "delete": {
 
           // Try to delete the base from the database.
-          const {deletedCount} = await collections.roleGroups.deleteOne({baseRoleId: baseRole});
+          const {deletedCount} = await collections.roleGroups.deleteOne({baseRoleId});
           
           // Tell the member.
           await interaction.createFollowup(deletedCount > 0 ? "Done." : "I don't have that base role in my records.");
