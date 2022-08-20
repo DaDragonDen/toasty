@@ -1,4 +1,4 @@
-import { ApplicationCommandOptions, Client, CommandInteraction, ComponentInteraction, EventListeners } from "eris";
+import { ApplicationCommandOptions, ApplicationCommandStructure, Client, CommandInteraction, ComponentInteraction, EventListeners } from "eris";
 import { Collection } from "mongodb";
 
 const commands: {[name: string]: Command} = {};
@@ -157,6 +157,66 @@ class Command {
       console.log("\x1b[36m%s\x1b[0m", "[Commands] Removing interaction for command \"" + this.name + "\"...");
       this.deleteInteractionOnFirstUsage = true;
       console.log("\x1b[32m%s\x1b[0m", "[Commands] Removed interaction for command \"" + this.name + "\"...");
+
+    } else if (this.slashOptions && interactionCmdInfo && interactionCmdInfo.type === 1) {
+
+      const updateCommand = async () => {
+
+        console.log("\x1b[36m%s\x1b[0m", `[Commands] Updating ${this.name} command...`);
+
+        await _discordClient.editCommand(interactionCmdInfo.id, {
+          name: this.name,
+          description: this.description,
+          options: this.slashOptions
+        } as Omit<ApplicationCommandStructure, "type">);
+
+      };
+
+      // Now, we can run the loop.
+      type ObjectWithStringIndex = {[index: string]: any};
+      // eslint-disable-next-line no-unused-vars
+      const deepEqual: (object1: ObjectWithStringIndex | any[], object2: ObjectWithStringIndex | any[]) => boolean = (object1: ObjectWithStringIndex | any[], object2: ObjectWithStringIndex | any[]) => {
+
+        const object1Keys = Object.keys(object1);
+        for (let i = 0; object1Keys.length > i; i++) {
+
+          const key = object1Keys[i];
+          const object1IsArray = Array.isArray(object1);
+          const object2IsArray = Array.isArray(object2);
+          const value1 = object1IsArray ? object1[parseInt(key, 10)] : object1[key];
+          const value2 = object2IsArray ? object2[parseInt(key, 10)] : object2[key];
+          if (value1 !== value2) {
+
+            // Check if it's an object or an array.
+            const value1IsArray = Array.isArray(value1);
+            const value2IsArray = Array.isArray(value2);
+            if ((value1IsArray && value2IsArray) || (!value1IsArray && !value2IsArray && (value1 instanceof Object && value2 instanceof Object))) {
+              
+              if (!deepEqual(value1, value2)) {
+
+                return false;
+
+              }
+
+            } else {
+
+              return false;
+
+            }
+
+          }
+
+        }
+
+        return true;
+
+      };
+      
+      if (!deepEqual(this.slashOptions, interactionCmdInfo.options)) {
+
+        await updateCommand();
+        
+      }
 
     }
 
