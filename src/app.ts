@@ -44,12 +44,7 @@ declare global {
     bumpTimeout = setTimeout(async () => {
 
       bumpTimeout = undefined;
-      await bot.createMessage("509403818031710208", {
-        allowedMentions: {
-          roles: true
-        },
-        content: "<@&851865112972886027> bumping's back!"
-      });
+      await bot.createMessage("1020137279169232926", "bumping's back!");
 
     }, remainingTime || 7200000);
 
