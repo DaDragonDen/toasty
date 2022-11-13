@@ -151,11 +151,29 @@ declare global {
             const roleGroup = await collections.roleGroups.findOne({baseRoleId: roleId});
             if (roleGroup) {
 
-              // Give the member some more roles.
-              const {attachedRoleIds} = roleGroup;
-              for (let i = 0; attachedRoleIds.length > i; i++) {
+              // Make sure the role exists.
+              if (guild.roles.find((role) => role.id === roleId)) {
 
-                await member.addRole(attachedRoleIds[i], "Following a role group rule");
+                // Give the member some more roles.
+                const {attachedRoleIds} = roleGroup;
+                for (let i = 0; attachedRoleIds.length > i; i++) {
+
+                  try {
+
+                    await member.addRole(attachedRoleIds[i], "Following a role group rule");
+
+                  } catch (err) {
+
+                    console.warn(`Couldn't add role: ${err}`);
+
+                  }
+
+                }
+
+              } else {
+
+                // Delete the role group.
+                await collections.roleGroups.deleteOne({baseRoleId: roleId});
 
               }
 
